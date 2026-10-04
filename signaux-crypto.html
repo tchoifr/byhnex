@@ -143,6 +143,28 @@
     letter-spacing: 0.3px; cursor: pointer; transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
   }
   button:hover { border-color: var(--red); color: var(--red); box-shadow: 0 0 18px -6px var(--red); }
+  [hidden] { display: none !important; }
+  /* Phone push setup: a bottom sheet on phones. */
+  .push-open { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px; border-radius: 14px; font-size: 12.5px; color: var(--text); border-color: var(--border); background: rgba(255,255,255,.03); }
+  .push-open svg { width: 18px; height: 18px; color: var(--accent); }
+  .push-open:hover { border-color: var(--border-strong); color: var(--text); box-shadow: none; }
+  .push-sheet { width: min(520px, 100%); max-height: 88vh; margin: auto auto 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)); border: 1px solid var(--border); border-bottom: 0; border-radius: 24px 24px 0 0; background: #0d1024; color: var(--text); font-family: 'Manrope', sans-serif; overflow-y: auto; }
+  .push-sheet::backdrop { background: rgba(2,3,10,.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .ps-grip { width: 42px; height: 5px; border-radius: 3px; background: rgba(150,160,255,.3); margin: 0 auto 10px; }
+  .ps-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .ps-head h2 { margin: 0; font: 600 17px 'Unbounded', 'Segoe UI', sans-serif; letter-spacing: -.3px; color: var(--text); text-transform: none; }
+  .ps-close { width: 40px; height: 40px; padding: 0; border-radius: 12px; display: grid; place-items: center; }
+  .ps-lead { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 8px 0 14px; }
+  .ps-steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+  .ps-steps li { counter-increment: s; position: relative; padding: 12px 12px 12px 48px; border: 1px solid var(--border); border-radius: 16px; font-size: 13.5px; line-height: 1.5; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ps-steps li::before { content: counter(s); position: absolute; left: 12px; top: 12px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 12px 'JetBrains Mono', monospace; color: var(--accent); border: 1px solid rgba(58,230,255,.45); background: rgba(58,230,255,.08); }
+  .ps-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border-radius: 12px; font: 700 13px 'Manrope', sans-serif; color: var(--text); text-decoration: none; border: 1px solid var(--border); background: rgba(255,255,255,.04); cursor: pointer; }
+  .ps-btn.primary { border: 0; color: #0a0718; background: linear-gradient(120deg, #3ae6ff, #8d63ff 55%, #ff52d9); }
+  .ps-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .ps-state { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .ps-state.ok { color: var(--green); } .ps-state.err { color: var(--red); }
+  #push-code { width: 100%; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--border); background: rgba(5,6,14,.8); color: var(--text); font: 11px/1.4 'JetBrains Mono', monospace; padding: 8px; resize: none; word-break: break-all; }
+  .ps-note { margin: 14px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
   /* Alerts: one switch with its state in words (off / on / blocked). */
   .alert-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px 6px 6px; border-radius: 16px; border: 1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); text-align: left; letter-spacing: 0; }
   .alert-switch:hover { border-color: var(--border-strong); color: var(--text); box-shadow: none; background: rgba(255,255,255,.05); }
@@ -222,6 +244,8 @@
     .sg-actions { flex-wrap: nowrap; }
     .sg-actions .status { font-size: 11.5px; min-width: 0; }
     .alert-switch { flex: none; min-height: 44px; padding: 4px 6px 4px 4px; gap: 8px; }
+    .sg-actions { flex-wrap: wrap; }
+    .push-open { flex: 1; justify-content: center; }
     .as-bell { width: 32px; height: 32px; }
     .as-text small { font-size: 11px; }
     .fund-chip { font-size: 11.5px; padding: 3px 7px; }
@@ -269,7 +293,8 @@
       <span class="as-bell" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
       <span class="as-text"><b>Alertes</b><small id="alerts-state">Désactivées</small></span>
       <span class="as-track" aria-hidden="true"><i></i></span>
-    </button></div>
+    </button>
+    <button id="push-open" class="push-open" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Sur mon téléphone</button></div>
   </header>
 
   <section class="kpis" aria-label="Résumé">
@@ -327,6 +352,27 @@
 </div>
 
 </main>
+<dialog id="push-sheet" class="push-sheet" aria-labelledby="push-title">
+  <div class="ps-grip" aria-hidden="true"></div>
+  <div class="ps-head"><h2 id="push-title">Alertes sur ton téléphone</h2><button type="button" class="ps-close" id="push-close" aria-label="Fermer">✕</button></div>
+  <p class="ps-lead">Reçois une notification Byhnex quand une crypto entre en zone d’achat ou de vente, même appli fermée.</p>
+  <div id="push-install" hidden>
+    <ol class="ps-steps">
+      <li><span>Ouvre ce site dans <b>Chrome</b> sur ton téléphone.</span></li>
+      <li><span>Menu <b>⋮</b> en haut à droite → <b>Installer l’application</b> (ou « Ajouter à l’écran d’accueil »).</span></li>
+      <li><span>Ouvre <b>Byhnex</b> depuis ton écran d’accueil, va dans Signaux et touche à nouveau « Sur mon téléphone ».</span></li>
+    </ol>
+  </div>
+  <div id="push-setup" hidden>
+    <ol class="ps-steps">
+      <li><span><b>Active</b> les notifications sur ce téléphone.</span><button type="button" class="ps-btn primary" id="push-enable">Activer</button><span class="ps-state" id="push-state"></span></li>
+      <li><span><b>Copie ton code</b> personnel (il reste sur ton téléphone et dans GitHub).</span><textarea id="push-code" readonly rows="3" aria-label="Code de notification"></textarea><button type="button" class="ps-btn" id="push-copy" disabled>Copier le code</button></li>
+      <li><span>Sur GitHub, crée le secret <b>BYHNEX_PUSH</b> et colle le code dedans.</span><a class="ps-btn" href="https://github.com/osvalt16/byhnex/settings/secrets/actions/new" target="_blank" rel="noopener">Ouvrir GitHub ↗</a></li>
+      <li><span>Vérifie : lance le robot avec « test_push » coché, une notification arrive.</span><a class="ps-btn" href="https://github.com/osvalt16/byhnex/actions/workflows/robot-signaux.yml" target="_blank" rel="noopener">Lancer le test ↗</a></li>
+    </ol>
+    <p class="ps-note">Le robot GitHub vérifie les signaux plusieurs fois par jour : GitHub ne garantit pas un passage toutes les 5 minutes. Pas un conseil financier.</p>
+  </div>
+</dialog>
 <script src="network.js?v=20261003-ovh"></script><script src="devises.js"></script>
 <script>
 'use strict';
@@ -717,6 +763,57 @@ for (const b of document.querySelectorAll('.chips button')) b.addEventListener('
   render();
 });
 const swReady = 'serviceWorker' in navigator ? navigator.serviceWorker.register('sw.js', { scope: './' }).then(() => navigator.serviceWorker.ready).catch(() => null) : null;
+/* ---------- push on the phone (installed app only) ---------- */
+const PUSH_KEYS = 'byhnex-push-keys';
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const isPhone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 900;
+const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function vapidKeys() {
+  try { const k = JSON.parse(localStorage.getItem(PUSH_KEYS)); if (k && k.pub && k.priv) return k; } catch (e) {}
+  // The key pair is made on this phone: the private half only goes to the GitHub secret you paste.
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+  const k = { pub: b64u(await crypto.subtle.exportKey('raw', pair.publicKey)), priv: (await crypto.subtle.exportKey('jwk', pair.privateKey)).d };
+  try { localStorage.setItem(PUSH_KEYS, JSON.stringify(k)); } catch (e) {}
+  return k;
+}
+async function enablePush() {
+  const state = document.getElementById('push-state');
+  state.className = 'ps-state'; state.textContent = 'Activation…';
+  try {
+    if (!('PushManager' in window) || !swReady) throw new Error('Ce navigateur ne gère pas les notifications push.');
+    if (Notification.permission !== 'granted' && await Notification.requestPermission() !== 'granted') throw new Error('Notifications refusées : autorise-les dans les réglages de l’appli.');
+    const reg = await swReady, keys = await vapidKeys();
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && b64u(sub.options.applicationServerKey) !== keys.pub) { await sub.unsubscribe(); sub = null; }
+    sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(keys.pub) });
+    const s = sub.toJSON();
+    document.getElementById('push-code').value = b64u(new TextEncoder().encode(JSON.stringify({ s: { endpoint: s.endpoint, keys: s.keys }, pub: keys.pub, priv: keys.priv })));
+    document.getElementById('push-copy').disabled = false;
+    state.className = 'ps-state ok'; state.textContent = 'Activées sur ce téléphone ✓';
+    if (!alertsOn) { alertsOn = true; try { localStorage.setItem('crypto-bot-alerts', 'on'); } catch (e) {} renderAlerts(); }
+  } catch (e) { state.className = 'ps-state err'; state.textContent = e.message; }
+}
+function openPushSheet() {
+  const installed = isInstalled();
+  document.getElementById('push-install').hidden = installed;
+  document.getElementById('push-setup').hidden = !installed;
+  const sheet = document.getElementById('push-sheet');
+  sheet.showModal ? sheet.showModal() : sheet.setAttribute('open', '');
+  if (installed && Notification.permission === 'granted') enablePush();
+}
+if (isPhone) document.getElementById('push-open').hidden = false;
+document.getElementById('push-open').addEventListener('click', openPushSheet);
+document.getElementById('push-close').addEventListener('click', () => document.getElementById('push-sheet').close());
+document.getElementById('push-sheet').addEventListener('click', e => { if (e.target.id === 'push-sheet') e.target.close(); });
+document.getElementById('push-enable').addEventListener('click', enablePush);
+document.getElementById('push-copy').addEventListener('click', async () => {
+  const area = document.getElementById('push-code'), btn = document.getElementById('push-copy');
+  try { await navigator.clipboard.writeText(area.value); btn.textContent = 'Copié ✓'; }
+  catch (e) { area.focus(); area.select(); btn.textContent = 'Sélectionné : copie-le'; }
+  setTimeout(() => { btn.textContent = 'Copier le code'; }, 2500);
+});
+
 function renderAlerts() {
   const btn = document.getElementById('alerts'), state = document.getElementById('alerts-state');
   const blocked = 'Notification' in window && Notification.permission === 'denied';

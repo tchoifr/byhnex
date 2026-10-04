@@ -91,6 +91,12 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   publie `data.json`, `widget.txt`, `widget-color.txt` et les colonnes `col-*.txt`
   sur la branche `data` (consommee par le widget KWGT du telephone), et envoie une
   notification ntfy a chaque *entree* en zone (canal secret dans `NTFY_TOPIC`).
+  Il envoie aussi une notification Web Push a l'appli Byhnex installee sur le telephone
+  si le secret `BYHNEX_PUSH` existe (`scripts/push.mjs`, bibliotheque `web-push` installee
+  dans le workflow). Ce code est cree sur le telephone (Signaux > « Sur mon telephone ») :
+  abonnement du navigateur + paire VAPID generee sur l'appareil. Test manuel : lancer le
+  workflow avec `test_push` coche. `sw.js` affiche ces notifications ; il n'a volontairement
+  aucun gestionnaire `fetch` (jamais de donnees de marche en cache).
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
 - `crypto-bot-virtuel.html` et `rainbow-doge.html` : redirections vers les pages
   renommees, conservees pour les anciens liens et notifications deja envoyees.
