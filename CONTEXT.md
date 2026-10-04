@@ -92,7 +92,7 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   sur la branche `data` (consommee par le widget KWGT du telephone), et envoie une
   notification ntfy a chaque *entree* en zone (canal secret dans `NTFY_TOPIC`).
   Il envoie aussi une notification Web Push a tous les telephones inscrits.
-- `worker/byhnex-push.js` (Cloudflare Workers, offre gratuite) : les telephones s'y inscrivent
+- (en veille, voir Points ouverts) `worker/byhnex-push.js` (Cloudflare Workers, offre gratuite) : les telephones s'y inscrivent
   en un clic (interrupteur « Alertes » de Signaux, appli installee), abonnements et cles VAPID
   dans KV ; son cron relance le robot toutes les 5 min (le planificateur GitHub est irregulier).
   Deploye par `.github/workflows/push-server.yml`, qui ecrit son adresse dans `push-config.json`.
@@ -199,6 +199,16 @@ Pour une modification du robot :
 - Toute nouvelle dependance externe doit etre justifiee et gratuite, sans cle.
 
 ## Points ouverts
+
+- Notifications Signaux MISES DE COTE (a la demande, a reprendre plus tard). Retirees du site
+  (PC et mobile) ; la page desinscrit l'ancien service worker. Conserve dans le depot, en veille :
+  `worker/byhnex-push.js` (serveur Cloudflare gratuit : inscription en un clic, cles VAPID, cron
+  5 min qui relance le robot), `.github/workflows/push-server.yml` (deploiement, ne tourne que
+  sur modification de `worker/` ou a la main), `scripts/push.mjs` (envoi a tous les telephones),
+  `sw.js` et `push-config.json` (non publies). Interface a restaurer depuis l'historique Git :
+  PR #38 (interrupteur), #40 (inscription automatique). Pour reprendre : remettre l'interface,
+  republier `sw.js` et `push-config.json`, puis creer les secrets CLOUDFLARE_API_TOKEN,
+  CLOUDFLARE_ACCOUNT_ID et DISPATCH_TOKEN et lancer « Serveur de notifications ».
 
 - Le planificateur GitHub Actions n'a jamais demarre tout seul : le robot n'a tourne
   que sur declenchement manuel. Solution de secours envisagee : un service externe
