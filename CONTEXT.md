@@ -91,12 +91,14 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   publie `data.json`, `widget.txt`, `widget-color.txt` et les colonnes `col-*.txt`
   sur la branche `data` (consommee par le widget KWGT du telephone), et envoie une
   notification ntfy a chaque *entree* en zone (canal secret dans `NTFY_TOPIC`).
-  Il envoie aussi une notification Web Push a l'appli Byhnex installee sur le telephone
-  si le secret `BYHNEX_PUSH` existe (`scripts/push.mjs`, bibliotheque `web-push` installee
-  dans le workflow). Ce code est cree sur le telephone (Signaux > « Sur mon telephone ») :
-  abonnement du navigateur + paire VAPID generee sur l'appareil. Test manuel : lancer le
-  workflow avec `test_push` coche. `sw.js` affiche ces notifications ; il n'a volontairement
-  aucun gestionnaire `fetch` (jamais de donnees de marche en cache).
+  Il envoie aussi une notification Web Push a tous les telephones inscrits.
+- `worker/byhnex-push.js` (Cloudflare Workers, offre gratuite) : les telephones s'y inscrivent
+  en un clic (interrupteur « Alertes » de Signaux, appli installee), abonnements et cles VAPID
+  dans KV ; son cron relance le robot toutes les 5 min (le planificateur GitHub est irregulier).
+  Deploye par `.github/workflows/push-server.yml`, qui ecrit son adresse dans `push-config.json`.
+  Secrets (une fois, proprietaire) : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DISPATCH_TOKEN.
+  Les positions Coinbase ne vont jamais dans ces notifications publiques. `sw.js` affiche les
+  notifications ; il n'a volontairement aucun gestionnaire `fetch` (pas de donnees en cache).
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
 - `crypto-bot-virtuel.html` et `rainbow-doge.html` : redirections vers les pages
   renommees, conservees pour les anciens liens et notifications deja envoyees.

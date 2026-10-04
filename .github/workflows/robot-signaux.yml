@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       test_push:
-        description: Envoyer une notification de test au telephone
+        description: Envoyer une notification de test a tous les telephones inscrits
         type: boolean
         default: false
 permissions:
@@ -31,7 +31,7 @@ jobs:
       - name: Calcule les signaux et notifie si entree en zone
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          BYHNEX_PUSH: ${{ secrets.BYHNEX_PUSH }}
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
           TEST_PUSH: ${{ inputs.test_push }}
           COINBASE_KEY_NAME: ${{ secrets.COINBASE_KEY_NAME }}
           COINBASE_PRIVATE_KEY: ${{ secrets.COINBASE_PRIVATE_KEY }}

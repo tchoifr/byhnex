@@ -1,0 +1,12 @@
+# Byhnex push server. Deployed by .github/workflows/push-server.yml (the KV id is filled in there).
+name = "byhnex-push"
+main = "byhnex-push.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "SUBS"
+id = "__KV_ID__"
+
+[triggers]
+crons = ["*/5 * * * *"]
