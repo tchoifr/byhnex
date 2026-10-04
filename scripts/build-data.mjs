@@ -5,7 +5,7 @@
 'use strict';
 
 import { createPrivateKey, createSign, randomBytes, sign as rawSign } from 'node:crypto';
-import { sendPush } from './push.mjs';
+import { pushAll } from './push.mjs';
 
 // --- Positions reelles Coinbase (optionnel : actif si les secrets existent) ---
 // Cle API en LECTURE SEULE uniquement, stockee dans les secrets GitHub Actions.
@@ -193,11 +193,16 @@ async function main() {
   // Notifications : uniquement les ENTREES en zone (comparaison avec l'etat precedent)
   let prev = null;
   try { prev = JSON.parse(fs.readFileSync('prev.json', 'utf8')); } catch {}
-  const topic = process.env.NTFY_TOPIC, pushCode = process.env.BYHNEX_PUSH;
-  if (pushCode && process.env.TEST_PUSH === 'true') {
-    await sendPush(pushCode, { title: 'Byhnex · test', body: 'Les alertes Signaux arrivent bien sur ce téléphone.', tag: 'byhnex-test', url: 'signaux-crypto.html' });
+  const topic = process.env.NTFY_TOPIC;
+  // Serveur push (Cloudflare) : adresse publiee dans push-config.json par le deploiement.
+  let pushUrl = null;
+  try { pushUrl = JSON.parse(fs.readFileSync('push-config.json', 'utf8')).url || null; } catch {}
+  const pushToken = process.env.DISPATCH_TOKEN;
+  const push = pushUrl && pushToken ? async payload => { try { await pushAll(pushUrl, pushToken, payload); } catch (e) { console.error('ECHEC push:', e.message); } } : null;
+  if (push && process.env.TEST_PUSH === 'true') {
+    await push({ title: 'Byhnex · test', body: 'Les alertes Signaux arrivent bien sur ce téléphone.', tag: 'byhnex-test', url: 'signaux-crypto.html' });
   }
-  if (prev && (topic || pushCode)) {
+  if (prev && (topic || push)) {
     const prevZone = Object.fromEntries(prev.coins.map(c => [c.short, c.zone]));
     for (const c of out) {
       const pz = prevZone[c.short];
@@ -209,7 +214,8 @@ async function main() {
         const message = `${c.name} — RSI ${c.rsi} · prix ${fmtPx(c.price)} € · tendance ${tLabel}${warn}`
           + (positions && positions[c.short] ? ` 💼 Tu détiens ${positions[c.short].toLocaleString('fr-FR', { maximumFractionDigits: 6 })} ${c.short}.` : '')
           + ' Info, pas un conseil financier.';
-        if (pushCode) await sendPush(pushCode, { title, body: message, tag: 'sig-' + c.short, url: 'signaux-crypto.html' });
+        // Les positions Coinbase restent privees : jamais dans les notifications envoyees a tous.
+        if (push) await push({ title, body: `${c.name} — RSI ${c.rsi} · prix ${fmtPx(c.price)} € · tendance ${tLabel}${warn} Info, pas un conseil financier.`, tag: 'sig-' + c.short, url: 'signaux-crypto.html' });
         if (!topic) continue;
         // publication JSON : les en-tetes HTTP n'acceptent pas l'UTF-8 (accents, tirets)
         try {
@@ -229,7 +235,7 @@ async function main() {
       }
     }
   } else {
-    console.log(prev ? 'NTFY_TOPIC et BYHNEX_PUSH absents, pas de notifications' : 'premier passage, pas de notifications');
+    console.log(prev ? 'ni NTFY_TOPIC ni serveur push, pas de notifications' : 'premier passage, pas de notifications');
   }
   console.log(`OK — ${out.length} cryptos, ${new Date().toISOString()}`);
 }

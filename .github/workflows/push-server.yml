@@ -1,0 +1,83 @@
+name: Serveur de notifications
+# Deploie worker/byhnex-push.js sur Cloudflare Workers (offre gratuite) et publie son adresse
+# dans push-config.json. Secrets requis (a creer une seule fois par le proprietaire) :
+# CLOUDFLARE_API_TOKEN (modele « Edit Cloudflare Workers »), CLOUDFLARE_ACCOUNT_ID,
+# DISPATCH_TOKEN (jeton GitHub, droit Actions lecture/ecriture sur ce depot).
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/push-server.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: push-server
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secrets presents ?
+        id: check
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$DISPATCH_TOKEN" ]; then
+            echo "Secrets manquants : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID et DISPATCH_TOKEN. Deploiement ignore."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          node-version: 22
+      - name: Espace de stockage KV et sous-domaine workers.dev
+        if: steps.check.outputs.ok == 'true'
+        id: cf
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          KV_ID=$(curl -fsS -H "$AUTH" "$API/storage/kv/namespaces?per_page=100" | jq -r '.result[] | select(.title=="byhnex-push-subs") | .id' | head -n1)
+          if [ -z "$KV_ID" ]; then
+            KV_ID=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"title":"byhnex-push-subs"}' "$API/storage/kv/namespaces" | jq -r '.result.id')
+          fi
+          test -n "$KV_ID" && test "$KV_ID" != "null"
+          SUB=$(curl -sS -H "$AUTH" "$API/workers/subdomain" | jq -r '.result.subdomain // empty')
+          if [ -z "$SUB" ]; then
+            SUB="byhnex-$(echo "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-6)"
+            curl -fsS -X PUT -H "$AUTH" -H "Content-Type: application/json" -d "{\"subdomain\":\"$SUB\"}" "$API/workers/subdomain" > /dev/null
+          fi
+          sed -i "s/__KV_ID__/$KV_ID/" worker/wrangler.toml
+          echo "url=https://byhnex-push.$SUB.workers.dev" >> "$GITHUB_OUTPUT"
+      - name: Deploiement du serveur
+        if: steps.check.outputs.ok == 'true'
+        working-directory: worker
+        run: |
+          npx --yes wrangler@4 deploy
+          printf '%s' "$DISPATCH_TOKEN" | npx --yes wrangler@4 secret put DISPATCH_TOKEN
+      - name: Verification
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "${{ steps.cf.outputs.url }}/vapid" | jq -e '.publicKey' > /dev/null; then echo "serveur OK"; exit 0; fi
+            sleep 10
+          done
+          echo "Le serveur ne repond pas encore"; exit 1
+      - name: Publie l'adresse du serveur pour le site
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          echo "{\"url\": \"${{ steps.cf.outputs.url }}\"}" > push-config.json
+          if git diff --quiet -- push-config.json; then echo "adresse inchangee"; exit 0; fi
+          git config user.name "push-server-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "chore(push): adresse du serveur de notifications" -- push-config.json
+          git push
+          # un push fait avec GITHUB_TOKEN ne relance pas les workflows : on redeploie le site explicitement
+          curl -fsS -X POST -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/pages.yml/dispatches" -d '{"ref":"main"}'
