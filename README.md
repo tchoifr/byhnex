@@ -12,10 +12,8 @@ Site statique : accueil avec boîte à outils, recherche et favoris ; quatre out
 ## Thème web3 et navigation mobile
 `web3.css` est chargé en dernier sur chaque page : fond aurore, panneaux en verre, polices Unbounded / Manrope / JetBrains Mono. Sur téléphone (≤ 760 px), la barre latérale laisse place à une barre d’onglets en bas pour le pouce (Accueil, Signaux, Graphique au centre, Cycles, Bot) ; l’accueil et le tableau des signaux défilent latéralement pour limiter le défilement vertical.
 
-## Alertes Signaux sur le téléphone
-Dans Signaux, l’interrupteur « Alertes » prévient quand la page est ouverte. Dans l’appli installée sur un téléphone (Chrome → ⋮ → Installer l’application), le même clic inscrit le téléphone au serveur de notifications `worker/byhnex-push.js` (Cloudflare Workers, gratuit) : les entrées en zone d’achat/vente arrivent alors même appli fermée, sans autre manipulation. Le serveur relance le robot toutes les 5 minutes ; le robot calcule les signaux et envoie les notifications.
-
-Mise en service (une seule fois, propriétaire du dépôt) : secrets GitHub `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DISPATCH_TOKEN`, puis le workflow « Serveur de notifications » déploie tout et publie l’adresse dans `push-config.json`.
+## Notifications (mises de côté)
+Les alertes de Signaux (interrupteur, notifications sur l’appli installée) sont retirées du site pour l’instant. Le travail est conservé pour une reprise : serveur `worker/byhnex-push.js` + `.github/workflows/push-server.yml`, envoi `scripts/push.mjs`, `sw.js`, `push-config.json`, et l’interface dans l’historique Git (PR #38 à #40). Voir CONTEXT.md, « Points ouverts ».
 
 ## Bot virtuel et Cycles
 - `bot.html` + `bot-engine.js` : bot de trading **fictif** (RSI, croisement EMA, DCA, grille). Rejoue d’abord la stratégie sur 1000 bougies Binance face au HOLD, puis peut tourner en direct dans le navigateur (décision à chaque clôture, portefeuille fictif sauvegardé localement, rattrapage des bougies manquées). Aucun ordre réel, aucune clé. Tests : `bot-engine.test.js`.

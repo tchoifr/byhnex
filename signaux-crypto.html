@@ -144,40 +144,6 @@
   }
   button:hover { border-color: var(--red); color: var(--red); box-shadow: 0 0 18px -6px var(--red); }
   [hidden] { display: none !important; }
-  /* Phone push setup: a bottom sheet on phones. */
-  .push-open { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px; border-radius: 14px; font-size: 12.5px; color: var(--text); border-color: var(--border); background: rgba(255,255,255,.03); }
-  .push-open svg { width: 18px; height: 18px; color: var(--accent); }
-  .push-open:hover { border-color: var(--border-strong); color: var(--text); box-shadow: none; }
-  .push-sheet { width: min(520px, 100%); max-height: 88vh; margin: auto auto 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)); border: 1px solid var(--border); border-bottom: 0; border-radius: 24px 24px 0 0; background: #0d1024; color: var(--text); font-family: 'Manrope', sans-serif; overflow-y: auto; }
-  .push-sheet::backdrop { background: rgba(2,3,10,.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-  .ps-grip { width: 42px; height: 5px; border-radius: 3px; background: rgba(150,160,255,.3); margin: 0 auto 10px; }
-  .ps-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  .ps-head h2 { margin: 0; font: 600 17px 'Unbounded', 'Segoe UI', sans-serif; letter-spacing: -.3px; color: var(--text); text-transform: none; }
-  .ps-close { width: 40px; height: 40px; padding: 0; border-radius: 12px; display: grid; place-items: center; }
-  .ps-lead { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 8px 0 14px; }
-  .ps-steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
-  .ps-steps li { counter-increment: s; position: relative; padding: 12px 12px 12px 48px; border: 1px solid var(--border); border-radius: 16px; font-size: 13.5px; line-height: 1.5; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-  .ps-steps li::before { content: counter(s); position: absolute; left: 12px; top: 12px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 12px 'JetBrains Mono', monospace; color: var(--accent); border: 1px solid rgba(58,230,255,.45); background: rgba(58,230,255,.08); }
-  .ps-note { margin: 14px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
-  /* Alerts: one switch with its state in words (off / on / blocked). */
-  .alert-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px 6px 6px; border-radius: 16px; border: 1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); text-align: left; letter-spacing: 0; }
-  .alert-switch:hover { border-color: var(--border-strong); color: var(--text); box-shadow: none; background: rgba(255,255,255,.05); }
-  .alert-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .as-bell { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,.05); color: var(--muted); transition: background .2s, color .2s; }
-  .as-bell svg { width: 19px; height: 19px; }
-  .as-text b { display: block; font-size: 13px; font-weight: 800; }
-  .as-text small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); }
-  .as-track { position: relative; width: 44px; height: 26px; border-radius: 13px; background: rgba(150,160,255,.18); transition: background .25s; flex: none; }
-  .as-track i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #c9cdf2; box-shadow: 0 2px 6px rgba(0,0,0,.5); transition: transform .25s, background .25s; }
-  .alert-switch[aria-checked=true] { border-color: rgba(58,230,255,.45); background: rgba(58,230,255,.06); }
-  .alert-switch[aria-checked=true] .as-bell { background: linear-gradient(140deg, #3ae6ff, #8d63ff); color: #0a0718; box-shadow: 0 6px 18px -6px #3ae6ff; }
-  .alert-switch[aria-checked=true] .as-bell svg { animation: ring 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
-  .alert-switch[aria-checked=true] .as-text small { color: var(--green); }
-  .alert-switch[aria-checked=true] .as-track { background: linear-gradient(120deg, #3ae6ff, #8d63ff); }
-  .alert-switch[aria-checked=true] .as-track i { transform: translateX(18px); background: #fff; }
-  .alert-switch.blocked .as-text small { color: var(--red); }
-  @keyframes ring { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(14deg); } 88% { transform: rotate(-12deg); } 92% { transform: rotate(8deg); } 96% { transform: rotate(-4deg); } }
-  @media (prefers-reduced-motion: reduce) { .alert-switch[aria-checked=true] .as-bell svg { animation: none; } .as-track i { transition: none; } }
   .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
   .warn {
     background: rgba(230,185,92,0.06); border: 1px solid rgba(230,185,92,0.3); border-radius: 14px;
@@ -237,11 +203,6 @@
     .sg-sub { font-size: 12px; margin-top: 4px; }
     .sg-actions { flex-wrap: nowrap; }
     .sg-actions .status { font-size: 11.5px; min-width: 0; }
-    .alert-switch { flex: none; min-height: 44px; padding: 4px 6px 4px 4px; gap: 8px; }
-    .sg-actions { flex-wrap: wrap; }
-    .push-open { flex: 1; justify-content: center; }
-    .as-bell { width: 32px; height: 32px; }
-    .as-text small { font-size: 11px; }
     .fund-chip { font-size: 11.5px; padding: 3px 7px; }
     .sg-head h1 { font-size: 19px; }
     .sg-actions { justify-content: space-between; }
@@ -283,12 +244,7 @@
 <div class="container">
   <header class="sg-head">
     <div><h1>Signaux &amp; positionnement</h1><p class="sg-sub">RSI 14 sur bougies 15 min · zone d’achat sous 30 · zone de vente au-dessus de 70</p></div>
-    <div class="sg-actions"><div class="status"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div><button id="alerts" class="alert-switch" type="button" role="switch" aria-checked="false" aria-describedby="alerts-state">
-      <span class="as-bell" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
-      <span class="as-text"><b>Alertes</b><small id="alerts-state">Désactivées</small></span>
-      <span class="as-track" aria-hidden="true"><i></i></span>
-    </button>
-    <button id="push-open" class="push-open" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Installer pour l’appli fermée</button></div>
+    <div class="sg-actions"><div class="status"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div></div>
   </header>
 
   <section class="kpis" aria-label="Résumé">
@@ -319,7 +275,7 @@
   </div>
 
   <div class="warn">
-    ⚠️ Les signaux et alertes sont des <strong>informations, pas des recommandations</strong> : un RSI en zone
+    ⚠️ Les signaux sont des <strong>informations, pas des recommandations</strong> : un RSI en zone
     ne garantit ni un rebond ni un repli. Le funding, l'open interest et le ratio long/short décrivent le
     <strong>positionnement des traders à effet de levier</strong> : des indicateurs de fragilité, jamais des signaux
     d'achat ou de vente. La décision et la responsabilité restent les tiennes.
@@ -334,8 +290,6 @@
       📡 Prix : WebSocket Binance (temps réel, tick par tick) · RSI recalculé à la clôture de chaque bougie de 15 min.<br>
       💱 Devise : le sélecteur en haut de la colonne Prix convertit l'affichage dans 160 devises (taux quotidiens). Le RSI et la tendance ne changent pas : ils ne dépendent pas de la devise.<br>
       🧭 Colonne Tendance : direction de fond de chaque crypto (moyennes 50/200 sur bougies 15 min). Un ⚠️ s'affiche quand le RSI contredit la tendance — RSI rouge + ↗ peut continuer de monter, RSI vert + ↘ peut continuer de chuter.<br>
-      🔔 Alertes ON : notification, bip et titre clignotant quand une crypto entre en zone d'achat ou de vente (page ouverte requise).<br>
-      📲 Les alertes push sur ton téléphone, elles, fonctionnent même page fermée : elles viennent du robot qui tourne sur GitHub.<br><br>
       ⚖️ <strong>Funding /an</strong> : loyer payé toutes les 8 h entre acheteurs et vendeurs à effet de levier (taux 8 h × 3 × 365). Au-dessus de 30 %/an, les acheteurs sont encombrés et exposés aux liquidations en cascade ; nettement négatif, ce sont les vendeurs (terrain d'un <em>short squeeze</em>).<br>
       📊 <strong>OI 24h</strong> : variation du montant total des positions ouvertes. <strong>Lecture prix / OI</strong> : prix ↗ + OI ↗ = argent frais à l'achat ; prix ↗ + OI ↘ = rachats de vendeurs ; prix ↘ + OI ↗ = nouveaux vendeurs ; prix ↘ + OI ↘ = purge du levier.<br>
       👥 <strong>Acheteurs</strong> : part des comptes à l'achat (barre verte). Quand une écrasante majorité est du même côté, beaucoup lisent le signal à contre-courant.<br>
@@ -346,16 +300,6 @@
 </div>
 
 </main>
-<dialog id="push-sheet" class="push-sheet" aria-labelledby="push-title">
-  <div class="ps-grip" aria-hidden="true"></div>
-  <div class="ps-head"><h2 id="push-title">Alertes même appli fermée</h2><button type="button" class="ps-close" id="push-close" aria-label="Fermer">✕</button></div>
-  <p class="ps-lead">Installe Byhnex sur ton téléphone : ensuite, activer « Alertes » suffit pour recevoir les zones d’achat et de vente, même appli fermée.</p>
-  <ol class="ps-steps">
-    <li><span>Ouvre ce site dans <b>Chrome</b> sur ton téléphone.</span></li>
-    <li><span>Menu <b>⋮</b> en haut à droite → <b>Installer l’application</b> (ou « Ajouter à l’écran d’accueil »).</span></li>
-    <li><span>Ouvre <b>Byhnex</b> depuis ton écran d’accueil, va dans Signaux et active <b>Alertes</b>.</span></li>
-  </ol>
-</dialog>
 <script src="network.js?v=20261003-ovh"></script><script src="devises.js"></script>
 <script>
 'use strict';
@@ -453,58 +397,6 @@ async function fetchKlines(sym, limit) {
   return raw.filter(k => k[6] <= now).map(k => ({ closeTime: k[6], close: parseFloat(k[4]) }));
 }
 
-let alertsOn = localStorage.getItem('crypto-bot-alerts') === 'on';
-const prevZone = {};
-const zoneOf = rsi => rsi === null || rsi === undefined ? null : (rsi < BUY_BELOW ? 'buy' : rsi > SELL_ABOVE ? 'sell' : 'neutral');
-const baseTitle = document.title;
-let flashTimer = null;
-
-let audioCtx = null;
-function beep(freq) {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = audioCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.value = freq; o.type = 'sine';
-    g.gain.setValueAtTime(0.25, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime + 0.6);
-  } catch(e) {}
-}
-
-function flashTitle(msg) {
-  clearInterval(flashTimer);
-  let on = false;
-  flashTimer = setInterval(() => { document.title = on ? msg : baseTitle; on = !on; }, 900);
-  setTimeout(() => { clearInterval(flashTimer); document.title = baseTitle; }, 30000);
-}
-
-function signalAlert(coin, rsi, zone) {
-  if (!alertsOn) return;
-  const isBuy = zone === 'buy';
-  const label = isBuy ? "🟢 ZONE D'ACHAT" : '🔴 ZONE DE VENTE';
-  const body = coin.name + ' — RSI ' + rsi.toFixed(1) + ' · ' + label + '. À toi de décider (aucune garantie).';
-  beep(isBuy ? 880 : 440);
-  flashTitle((isBuy ? '🟢 ' : '🔴 ') + coin.short + ' !');
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const opts = { body, tag: 'sig-' + coin.sym, icon: 'icon-192.png?v=20261004-fav', badge: 'favicon.png?v=20261004-fav', renotify: true };
-    (swReady ? swReady.then(reg => reg.showNotification('Signal ' + coin.short, opts)) : Promise.reject())
-      .catch(() => { try { new Notification('Signal ' + coin.short, opts); } catch (e) {} });
-  }
-}
-
-function checkAlerts(isInitial) {
-  for (const coin of COINS) {
-    const z = zoneOf(rsiNow[coin.sym]);
-    if (z === null) continue;
-    const prev = prevZone[coin.sym];
-    if (!isInitial && prev !== undefined && prev !== z && z !== 'neutral') signalAlert(coin, rsiNow[coin.sym], z);
-    prevZone[coin.sym] = z;
-  }
-}
-
 async function processNewCandles(isInitial) {
   const results = await Promise.all(COINS.map(async coin => {
     try {
@@ -523,7 +415,6 @@ async function processNewCandles(isInitial) {
     const s50 = sma(closes, 50), s200 = sma(closes, 200), px = closes[closes.length - 1];
     trendNow[coin.sym] = s200 === null ? null : (px > s200 && s50 > s200 ? 'up' : (px < s200 && s50 < s200 ? 'down' : 'flat'));
   }
-  checkAlerts(isInitial);
   render();
 }
 
@@ -745,66 +636,8 @@ for (const b of document.querySelectorAll('.chips button')) b.addEventListener('
   for (const x of document.querySelectorAll('.chips button')) x.setAttribute('aria-pressed', String(x === b));
   render();
 });
-const swReady = 'serviceWorker' in navigator ? navigator.serviceWorker.register('sw.js', { scope: './' }).then(() => navigator.serviceWorker.ready).catch(() => null) : null;
-/* ---------- push on the phone: one tap, no setup ---------- */
-// The installed app subscribes itself to the Byhnex push server; the robot then notifies it even when closed.
-const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const fromB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-const isPhone = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 900;
-const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-let pushServer = null, pushActive = false;
-const pushConfig = fetch('push-config.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).then(c => { pushServer = c.url || null; return pushServer; }).catch(() => null);
-const canPush = () => isPhone && isInstalled() && 'PushManager' in window && !!swReady;
-async function subscribePush() {
-  const url = await pushConfig;
-  if (!url || !canPush() || Notification.permission !== 'granted') return false;
-  const reg = await swReady;
-  if (!reg) return false;
-  const { publicKey } = await (await fetch(url + '/vapid')).json();
-  let sub = await reg.pushManager.getSubscription();
-  if (sub && b64u(sub.options.applicationServerKey) !== publicKey) { await sub.unsubscribe(); sub = null; }
-  sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(publicKey) });
-  const s = sub.toJSON();
-  const r = await fetch(url + '/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: { endpoint: s.endpoint, keys: s.keys } }) });
-  return r.ok;
-}
-async function unsubscribePush() {
-  const url = await pushConfig, reg = swReady && await swReady;
-  const sub = reg && await reg.pushManager.getSubscription();
-  if (!sub) return;
-  if (url) fetch(url + '/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
-  await sub.unsubscribe().catch(() => {});
-}
-async function syncPush() {
-  try { pushActive = alertsOn ? await subscribePush() : (await unsubscribePush(), false); }
-  catch (e) { console.warn('push', e); pushActive = false; }
-  renderAlerts();
-}
-document.getElementById('push-open').addEventListener('click', () => { const d = document.getElementById('push-sheet'); d.showModal ? d.showModal() : d.setAttribute('open', ''); });
-document.getElementById('push-close').addEventListener('click', () => document.getElementById('push-sheet').close());
-document.getElementById('push-sheet').addEventListener('click', e => { if (e.target.id === 'push-sheet') e.target.close(); });
-
-function renderAlerts() {
-  const btn = document.getElementById('alerts'), state = document.getElementById('alerts-state');
-  const blocked = 'Notification' in window && Notification.permission === 'denied';
-  btn.setAttribute('aria-checked', String(alertsOn));
-  btn.classList.toggle('blocked', alertsOn && blocked);
-  state.textContent = !alertsOn ? 'Désactivées' : blocked ? 'Bloquées par le navigateur' : !('Notification' in window) ? 'Son et titre seulement' : pushActive ? 'Même appli fermée ✓' : 'Achat et vente, page ouverte';
-  document.getElementById('push-open').hidden = !(isPhone && !isInstalled());
-  btn.title = alertsOn && blocked ? 'Autorise les notifications pour ce site dans les réglages du navigateur.' : 'Notification, bip et titre clignotant quand une crypto entre en zone d’achat ou de vente.';
-}
-document.getElementById('alerts').addEventListener('click', async () => {
-  alertsOn = !alertsOn;
-  if (alertsOn && 'Notification' in window && Notification.permission === 'default') {
-    await Notification.requestPermission();
-  }
-  try { localStorage.setItem('crypto-bot-alerts', alertsOn ? 'on' : 'off'); } catch (e) {}
-  renderAlerts();
-  if (alertsOn) beep(660);
-  syncPush();
-});
-renderAlerts();
-if (alertsOn) syncPush();   // keeps this phone registered (new key, reinstall…)
+// Notifications are set aside for now (see CONTEXT.md): remove any service worker left by the earlier version.
+if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
 async function refreshUniverse() {
   const before = COINS.map(c => c.sym).sort().join(',');
   await buildCoins();
