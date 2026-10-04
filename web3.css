@@ -232,3 +232,38 @@ html .byhnex-tool .tabs,html .byhnex-tool .tab-bar,html .byhnex-tool .coins{over
   .w3-gauge .needle,.w3-meter i,.w3-tab,.byhnex-home .bn-tool-card{transition:none}
   .w3-swipe-hint i,.byhnex-home .bn-live-strip .bn-status-dot{animation:none}
 }
+
+/* ---------- Graphique & accumulation (style.css page) ---------- */
+body.bn-graph-page{--bg:#05060e;--panel:rgba(16,19,40,.62);--border:rgba(150,160,255,.14);--muted:#8f95bd;--text:#eef0ff;--green:#2cf5a3;font-family:var(--w3-body)!important}
+.bn-graph-page>main>header{background:transparent;border-color:var(--w3-line);height:62px}
+.bn-graph-page .heading h1{font:600 30px/1.15 var(--w3-display);letter-spacing:-1px}
+.bn-graph-page .eyebrow{color:var(--w3-cyan);font-weight:700;letter-spacing:2.6px}
+.bn-graph-page .metric{border-radius:18px;background:var(--w3-glass);border-color:var(--w3-line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.bn-graph-page .metric:first-child{border-color:transparent;background:linear-gradient(var(--w3-glass),var(--w3-glass)) padding-box,var(--w3-edge) border-box}
+.bn-graph-page .metric-value{font-family:var(--w3-mono);letter-spacing:-1px}
+.bn-graph-page .metric-label{font-weight:700;letter-spacing:.4px}
+.bn-graph-page .panel{border-radius:20px;background:var(--w3-glass);border-color:var(--w3-line)}
+.bn-graph-page .asset-tab.selected{border-color:var(--w3-cyan)}
+.bn-graph-page .segmented button.selected{background:rgba(58,230,255,.12);color:var(--w3-cyan)}
+.bn-graph-page .button,.bn-graph-page .chart-controls button,.bn-graph-page .chart-controls select{border-radius:10px}
+.bn-graph-page .button{background:rgba(255,255,255,.04);border-color:var(--w3-line);color:var(--w3-text);font-weight:700}
+.bn-graph-page .primary{background:var(--w3-prism);color:#0a0718;border:0;border-radius:12px;min-height:44px;font-size:12.5px;box-shadow:0 10px 24px -12px rgba(141,99,255,.9)}
+.bn-graph-page .input-wrap{border-radius:12px;background:rgba(5,6,14,.7);border-color:var(--w3-line)}
+.bn-graph-page .input-wrap input,.bn-graph-page .lab input{font-family:var(--w3-mono)}
+.bn-graph-page .tag{border-radius:999px;background:rgba(141,99,255,.1);border-color:rgba(141,99,255,.3);color:#c9b8ff}
+.bn-graph-page h2{font-family:var(--w3-display);font-weight:600;letter-spacing:-.3px}
+.bn-graph-page dialog{border-radius:22px;background:#0d1024;border:1px solid var(--w3-line);color:var(--w3-text)}
+@media(max-width:760px){
+  .bn-graph-page>main>header{display:none}
+  .bn-graph-page .content{padding:16px 16px 8px}
+  .bn-graph-page .heading{flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .bn-graph-page .heading h1{font-size:22px;margin:6px 0}
+  .bn-graph-page .heading p{font-size:12.5px}
+  .bn-graph-page .metrics{display:grid!important;grid-auto-flow:column;grid-template-columns:none!important;grid-auto-columns:46%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px;gap:10px}
+  .bn-graph-page .metrics::-webkit-scrollbar{display:none}
+  .bn-graph-page .metric{scroll-snap-align:start;padding:13px}
+  .bn-graph-page .metric-value{font-size:20px;margin:8px 0 6px}
+  .bn-graph-page .asset-tabs,.bn-graph-page .chart-controls{overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:none}
+  .bn-graph-page .asset-tabs::-webkit-scrollbar,.bn-graph-page .chart-controls::-webkit-scrollbar{display:none}
+  .bn-graph-page .asset-tab,.bn-graph-page .chart-controls>*{flex:none}
+}
