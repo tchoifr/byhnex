@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '2-59/5 * * * *'
   workflow_dispatch:
+    inputs:
+      test_push:
+        description: Envoyer une notification de test au telephone
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -21,9 +26,13 @@ jobs:
         run: |
           git fetch origin data --depth=1 2>/dev/null || true
           git show origin/data:data.json > prev.json 2>/dev/null || echo "premier passage"
+      - name: Bibliotheque d'envoi des notifications push
+        run: npm install --no-save --no-audit --no-fund web-push@3.6.7
       - name: Calcule les signaux et notifie si entree en zone
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BYHNEX_PUSH: ${{ secrets.BYHNEX_PUSH }}
+          TEST_PUSH: ${{ inputs.test_push }}
           COINBASE_KEY_NAME: ${{ secrets.COINBASE_KEY_NAME }}
           COINBASE_PRIVATE_KEY: ${{ secrets.COINBASE_PRIVATE_KEY }}
         run: node scripts/build-data.mjs

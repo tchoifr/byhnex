@@ -12,6 +12,9 @@ Site statique : accueil avec boîte à outils, recherche et favoris ; quatre out
 ## Thème web3 et navigation mobile
 `web3.css` est chargé en dernier sur chaque page : fond aurore, panneaux en verre, polices Unbounded / Manrope / JetBrains Mono. Sur téléphone (≤ 760 px), la barre latérale laisse place à une barre d’onglets en bas pour le pouce (Accueil, Signaux, Graphique au centre, Cycles, Bot) ; l’accueil et le tableau des signaux défilent latéralement pour limiter le défilement vertical.
 
+## Alertes Signaux sur le téléphone
+Dans Signaux, l’interrupteur « Alertes » prévient (notification, bip, titre) quand la page est ouverte. Sur téléphone, « Sur mon téléphone » guide l’installation de l’appli depuis Chrome puis crée un code à coller dans le secret GitHub `BYHNEX_PUSH` : le robot `robot-signaux.yml` envoie alors les entrées en zone d’achat/vente comme notifications de l’appli, même fermée. Le rythme dépend du planificateur GitHub (pas garanti toutes les 5 min).
+
 ## Bot virtuel et Cycles
 - `bot.html` + `bot-engine.js` : bot de trading **fictif** (RSI, croisement EMA, DCA, grille). Rejoue d’abord la stratégie sur 1000 bougies Binance face au HOLD, puis peut tourner en direct dans le navigateur (décision à chaque clôture, portefeuille fictif sauvegardé localement, rattrapage des bougies manquées). Aucun ordre réel, aucune clé. Tests : `bot-engine.test.js`.
 - `cycles.html` : Rainbow Chart (top 10) et saisonnalité Bitcoin réunis. `rainbow-crypto.html` et `saisonnalite-btc.html` redirigent vers `cycles.html#rainbow` / `#saison`.

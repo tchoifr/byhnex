@@ -5,6 +5,7 @@
 'use strict';
 
 import { createPrivateKey, createSign, randomBytes, sign as rawSign } from 'node:crypto';
+import { sendPush } from './push.mjs';
 
 // --- Positions reelles Coinbase (optionnel : actif si les secrets existent) ---
 // Cle API en LECTURE SEULE uniquement, stockee dans les secrets GitHub Actions.
@@ -192,8 +193,11 @@ async function main() {
   // Notifications : uniquement les ENTREES en zone (comparaison avec l'etat precedent)
   let prev = null;
   try { prev = JSON.parse(fs.readFileSync('prev.json', 'utf8')); } catch {}
-  const topic = process.env.NTFY_TOPIC;
-  if (prev && topic) {
+  const topic = process.env.NTFY_TOPIC, pushCode = process.env.BYHNEX_PUSH;
+  if (pushCode && process.env.TEST_PUSH === 'true') {
+    await sendPush(pushCode, { title: 'Byhnex · test', body: 'Les alertes Signaux arrivent bien sur ce téléphone.', tag: 'byhnex-test', url: 'signaux-crypto.html' });
+  }
+  if (prev && (topic || pushCode)) {
     const prevZone = Object.fromEntries(prev.coins.map(c => [c.short, c.zone]));
     for (const c of out) {
       const pz = prevZone[c.short];
@@ -201,16 +205,20 @@ async function main() {
         const isBuy = c.zone === 'buy';
         const warn = isBuy && c.trend === 'down' ? ' ⚠️ couteau qui tombe' : (!isBuy && c.trend === 'up' ? ' ⚠️ tendance forte' : '');
         const tLabel = c.trend === 'up' ? '↗ haussière' : c.trend === 'down' ? '↘ baissière' : c.trend === 'flat' ? '→ neutre' : 'inconnue';
+        const title = (isBuy ? "Zone d'achat — " : 'Zone de vente — ') + c.short;
+        const message = `${c.name} — RSI ${c.rsi} · prix ${fmtPx(c.price)} € · tendance ${tLabel}${warn}`
+          + (positions && positions[c.short] ? ` 💼 Tu détiens ${positions[c.short].toLocaleString('fr-FR', { maximumFractionDigits: 6 })} ${c.short}.` : '')
+          + ' Info, pas un conseil financier.';
+        if (pushCode) await sendPush(pushCode, { title, body: message, tag: 'sig-' + c.short, url: 'signaux-crypto.html' });
+        if (!topic) continue;
         // publication JSON : les en-tetes HTTP n'acceptent pas l'UTF-8 (accents, tirets)
         try {
           const r = await fetch('https://ntfy.sh', {
             method: 'POST',
             body: JSON.stringify({
               topic,
-              title: (isBuy ? "Zone d'achat — " : 'Zone de vente — ') + c.short,
-              message: `${c.name} — RSI ${c.rsi} · prix ${fmtPx(c.price)} € · tendance ${tLabel}${warn}`
-                + (positions && positions[c.short] ? ` 💼 Tu détiens ${positions[c.short].toLocaleString('fr-FR', { maximumFractionDigits: 6 })} ${c.short}.` : '')
-                + ' Info, pas un conseil financier.',
+              title,
+              message,
               priority: 4,
               tags: [isBuy ? 'green_circle' : 'red_circle'],
               click: 'https://osvalt16.github.io/byhnex/signaux-crypto.html',
@@ -221,7 +229,7 @@ async function main() {
       }
     }
   } else {
-    console.log(prev ? 'NTFY_TOPIC absent, pas de notifications' : 'premier passage, pas de notifications');
+    console.log(prev ? 'NTFY_TOPIC et BYHNEX_PUSH absents, pas de notifications' : 'premier passage, pas de notifications');
   }
   console.log(`OK — ${out.length} cryptos, ${new Date().toISOString()}`);
 }
