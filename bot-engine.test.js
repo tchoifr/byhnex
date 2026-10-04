@@ -65,3 +65,27 @@ test('invalid settings are refused with a readable message', () => {
   assert.throws(() => validateConfig({strategy: 'ema', params: {fast: 50, slow: 20}, capital: 1000, fee: 0.1}), /rapide/);
   assert.throws(() => validateConfig({strategy: 'rsi', params: {}, capital: -5, fee: 0.1}), /capital/);
 });
+
+test('several cryptos share the capital and add up', async () => {
+  const {simulateMany} = await import('./bot-engine.js');
+  const cfg = {strategy: 'grid', params: {step: 5, levels: 2}, capital: 900, fee: 0.1};
+  const a = candles(wave(120)), b = candles(wave(120).map(v => v * 3)), c = candles(wave(100));
+  const r = simulateMany({A: a, B: b, C: c}, cfg);
+  const solo = simulate(a, {...cfg, capital: 300});
+  assert.deepEqual(r.assets.A.state.trades, solo.state.trades);
+  assert.equal(r.equity.length, 100);
+  const t = r.equity.at(-1).t, sum = ['A', 'B', 'C'].reduce((s, k) => s + r.assets[k].equity.find(e => e.t === t).bot, 0);
+  assert.ok(Math.abs(r.equity.at(-1).bot - sum) < 1e-9);
+  assert.ok(r.trades.every(x => ['A', 'B', 'C'].includes(x.asset)));
+  assert.throws(() => simulateMany({}, cfg), /au moins une/);
+});
+
+test('the current reading explains what the bot waits for', async () => {
+  const {readNow} = await import('./bot-engine.js');
+  const data = candles(wave(80));
+  assert.match(readNow(newBot(1000), data, {strategy: 'rsi', params: {}, capital: 1000, fee: 0.1}).wait, /achète sous 30/);
+  const dca = {strategy: 'dca', params: {every: 4, amount: 10}, capital: 100, fee: 0}, s = newBot(100);
+  assert.match(readNow(s, data, dca).value, /prochaine clôture/);
+  s.ticks = 1;
+  assert.match(readNow(s, data, dca).value, /3 bougies/);
+});
