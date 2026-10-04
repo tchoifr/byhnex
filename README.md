@@ -5,7 +5,7 @@ Site statique : accueil avec boîte à outils, recherche et favoris ; sept outil
 ## Démarrer et vérifier
 - `npm.cmd start` : http://localhost:5173
 - `npm.cmd test` : calculs après frais, agrégation OHLC, ticks, prix manquants, réponse réseau tardive, conversion valeur/quantité et réserve.
-- `npm.cmd run build` : export statique des 26 ressources publiques vers `dist`, liens relatifs contrôlés pour GitHub Pages.
+- `npm.cmd run build` : export statique des 31 ressources publiques (dont manifest, robots.txt et sitemap.xml) vers `dist`, liens relatifs contrôlés pour GitHub Pages.
 - `browser-portfolio-check.mjs` : cours réels, valeurs éditables, capital/réserve, cartes, mobile (Chrome DevTools sur localhost:9224).
 - `browser-tools-check.mjs` : vérification des six outils existants avec les données réelles.
 

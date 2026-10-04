@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://osvalt16.github.io/byhnex/sitemap.xml
