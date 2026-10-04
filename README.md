@@ -9,6 +9,9 @@ Site statique : accueil avec boîte à outils, recherche et favoris ; quatre out
 - `browser-portfolio-check.mjs` : cours réels, valeurs éditables, capital/réserve, cartes, mobile (Chrome DevTools sur localhost:9224).
 - `browser-tools-check.mjs` : vérification des six outils existants avec les données réelles.
 
+## Thème web3 et navigation mobile
+`web3.css` est chargé en dernier sur chaque page : fond aurore, panneaux en verre, polices Unbounded / Manrope / JetBrains Mono. Sur téléphone (≤ 760 px), la barre latérale laisse place à une barre d’onglets en bas pour le pouce (Accueil, Signaux, Graphique au centre, Saison, Rainbow) ; l’accueil et le tableau des signaux défilent latéralement pour limiter le défilement vertical.
+
 ## Graphique et dessins
 Plein ?cran natif avec secours plein navigateur et raccourci F ; ?chap pour sortir. Le cadrage s?adapte ? la fen?tre. Zoom molette ou boutons, d?placement, dernier cours, volumes optionnels, EMA 20/50 calcul?es sur l?historique r?el.
 

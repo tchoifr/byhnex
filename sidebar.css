@@ -9,8 +9,8 @@
 .bn-sidebar .bn-nav a{line-height:normal;white-space:nowrap}
 .bn-sidebar .bn-sidebar-bottom{flex-shrink:0}
 .bn-sidebar button{font-family:inherit;cursor:pointer}
-.bn-sidebar a:focus-visible,.bn-sidebar button:focus-visible,.bn-menu-toggle:focus-visible{outline:2px solid #b3a0fa;outline-offset:3px}
-.bn-menu-bar,.bn-menu-backdrop{display:none}
+.bn-sidebar a:focus-visible,.bn-sidebar button:focus-visible{outline:2px solid #b3a0fa;outline-offset:3px}
+.bn-menu-bar{display:none}
 .bn-graph-page>main,.bn-signals-page>main{margin-left:244px;min-width:0}
 .bn-signals-page{margin:0;padding:0}
 .bn-signals-page>.bn-signals-main{padding:26px 20px 60px}
@@ -19,7 +19,7 @@
   .bn-shared-nav>.bn-sidebar{width:214px;padding:25px 13px}
   .bn-graph-page>main,.bn-signals-page>main{margin-left:214px}
 }
-@media(min-width:521px) and (max-width:1000px){
+@media(min-width:761px) and (max-width:1000px){
   .bn-shared-nav>.bn-sidebar{width:70px;align-items:center;padding:20px 8px}
   .bn-sidebar .bn-brand{padding:0;margin:0 0 30px}
   .bn-sidebar .bn-brand>span,.bn-sidebar .bn-workspace,.bn-sidebar .bn-nav-label,.bn-sidebar .bn-nav a>span,.bn-sidebar .bn-nav b,.bn-sidebar .bn-local,.bn-sidebar .bn-source,.bn-sidebar .bn-user{display:none}
@@ -27,31 +27,18 @@
   .bn-sidebar .bn-nav svg{width:22px;height:22px}
   .bn-graph-page>main,.bn-signals-page>main{margin-left:70px}
 }
-@media(max-width:520px){
-  body.bn-shared-nav{padding-top:48px!important}
-  .bn-shared-nav>.bn-sidebar{display:flex;align-items:stretch;width:min(284px,85vw);padding:25px 18px;z-index:180;visibility:hidden;transform:translateX(-100%);transition:transform .2s,visibility .2s}
-  .bn-sidebar .bn-brand{padding:0 9px;margin-bottom:25px}
-  .bn-sidebar .bn-brand>span{display:inline}
-  .bn-sidebar .bn-workspace{display:flex}
-  .bn-sidebar .bn-nav-label{display:block}
-  .bn-sidebar .bn-nav a>span,.bn-sidebar .bn-nav b{display:inline}
-  .bn-sidebar .bn-nav a{padding:12px;justify-content:flex-start}
-  .bn-sidebar .bn-nav svg{width:19px;height:19px}
-  .bn-sidebar .bn-local,.bn-sidebar .bn-source{display:block}
-  .bn-sidebar .bn-user{display:flex}
-  .bn-menu-bar{position:fixed;inset:0 0 auto;height:48px;z-index:80;display:flex;align-items:center;gap:10px;padding:0 14px;background:#0f131ef5;border-bottom:1px solid #242b3a;color:#e9edf6;font:12px Inter,'Segoe UI',sans-serif;box-sizing:border-box}
-  .bn-menu-bar>a{color:#c2b0ff;text-decoration:none;font-size:17px;font-weight:700;letter-spacing:-.5px}
-  .bn-menu-bar>span{margin-left:auto;font-size:10px;color:#98a3b9}
-  .bn-menu-toggle{display:grid;place-items:center;width:32px;height:32px;background:#242138;border:1px solid #39314e;border-radius:7px;padding:6px;color:#c2b0ff;cursor:pointer;margin:0}
-  .bn-menu-toggle svg{width:19px;height:19px}
-  .bn-menu-backdrop{position:fixed;inset:0;z-index:170;border:0;background:#0009;padding:0;cursor:pointer}
-  .bn-navigation-open{overflow:hidden}
-  .bn-navigation-open>.bn-sidebar{visibility:visible;transform:none}
-  .bn-navigation-open>.bn-menu-backdrop{display:block}
-  .bn-graph-page>main,.bn-signals-page>main{margin-left:0}
-  .bn-signals-page>.bn-signals-main{padding:26px 14px 60px}
+.w3-tabbar{display:none}
+/* Phones: compact top bar + thumb tab bar at the bottom; the side panel is hidden. */
+@media(max-width:760px){
+  .bn-shared-nav>.bn-sidebar{display:none!important}
+  .bn-menu-bar{position:fixed;inset:0 0 auto;z-index:80;display:flex;align-items:center;gap:10px;box-sizing:border-box;height:calc(54px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 16px 0}
+  .bn-menu-bar>span{margin-left:auto}
+  .w3-tabbar{display:flex;position:fixed;z-index:90;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  body.bn-shared-nav{padding-top:calc(54px + env(safe-area-inset-top,0px))!important;padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))!important}
+  .bn-main,.bn-graph-page>main,.bn-signals-page>main{margin-left:0!important}
+  .bn-signals-page>.bn-signals-main{padding:18px 16px 24px}
 }
-body.embed>.bn-sidebar,body.embed>.bn-menu-bar,body.embed>.bn-menu-backdrop{display:none!important}
+body.embed>.bn-sidebar,body.embed>.bn-menu-bar,body.embed>.w3-tabbar,body.embed>.w3-aurora{display:none!important}
 body.embed.bn-shared-nav{padding:0!important}
 body.embed.bn-graph-page>main{margin:0}
-@media(prefers-reduced-motion:reduce){.bn-shared-nav>.bn-sidebar{transition:none}}
+
