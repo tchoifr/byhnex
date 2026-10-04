@@ -57,21 +57,30 @@
   .pick input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
   .pick span { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,.02); }
   .pick input:checked + span { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff); border-color: transparent; }
-  .strats { display: grid; gap: 8px; }
-  .strat { position: relative; display: block; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.02); cursor: pointer; }
+  .strats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .strat { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.02); cursor: pointer; }
   .strat input { position: absolute; opacity: 0; }
-  .strat b { display: block; font-size: 14px; }
-  .strat small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; margin-top: 3px; }
+  .strat i { font-style: normal; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 6px; font-size: 15px; color: var(--cyan); background: rgba(58,230,255,.08); }
+  .strat:has(input:checked) i { color: #0a0718; background: linear-gradient(140deg,#3ae6ff,#8d63ff); }
+  .strat b { display: block; font-size: 13.5px; white-space: nowrap; }
+  .strat small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .strat-help { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
   .strat:has(input:checked) { border-color: rgba(58,230,255,.55); background: rgba(58,230,255,.06); box-shadow: 0 0 0 1px rgba(58,230,255,.25) inset; }
   .strat:has(input:focus-visible) { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
   .field input, .field select { min-height: 42px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5,6,14,.7); color: var(--ink); padding: 0 12px; font: 600 14px 'JetBrains Mono', monospace; width: 100%; box-sizing: border-box; }
-  .adv summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; font-size: 13px; font-weight: 800; color: var(--ink); }
+  .adv summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 14px 8px 8px; border-radius: 16px; color: var(--ink); border: 1px solid transparent; background: linear-gradient(rgba(14,17,38,.96),rgba(14,17,38,.96)) padding-box, linear-gradient(120deg,rgba(58,230,255,.7),rgba(141,99,255,.5),rgba(255,82,217,.6)) border-box; box-shadow: 0 10px 24px -16px #3ae6ff; -webkit-tap-highlight-color: transparent; }
+  .adv summary:active { transform: scale(.98); }
+  .adv summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .adv summary::-webkit-details-marker { display: none; }
-  .adv summary::after { content: '▾'; color: var(--muted); transition: transform .2s; }
+  .adv summary::after { content: '▾'; margin-left: auto; width: 28px; height: 28px; flex: none; border-radius: 9px; display: grid; place-items: center; color: var(--cyan); background: rgba(58,230,255,.1); transition: transform .2s; }
   .adv[open] summary::after { transform: rotate(180deg); }
-  .adv summary span { margin-left: auto; font-weight: 600; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .adv-ico { width: 36px; height: 36px; flex: none; border-radius: 11px; display: grid; place-items: center; color: #0a0718; background: linear-gradient(140deg,#3ae6ff,#8d63ff 60%,#ff52d9); }
+  .adv-ico svg { width: 19px; height: 19px; }
+  .adv-txt { display: flex; flex-direction: column; min-width: 0; }
+  .adv-txt b { font-size: 14px; font-weight: 800; }
+  .adv-txt small { font: 600 11.5px 'JetBrains Mono', monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .adv-body { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
   .hint { margin: 0; font-size: 12px; color: var(--dim); line-height: 1.5; }
   .error:empty, .hint:empty { display: none; }
@@ -129,20 +138,44 @@
   .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--up); margin-right: 7px; vertical-align: 1px; box-shadow: 0 0 0 0 rgba(44,245,163,.6); animation: pulse 1.6s infinite; }
   @keyframes pulse { to { box-shadow: 0 0 0 8px rgba(44,245,163,0); } }
   .side-asset { font-size: 11px; font-weight: 800; color: var(--cyan); margin-right: 6px; }
+  .charts { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .ptabs { display: flex; gap: 6px; }
+  .ptabs:empty { display: none; }
+  .ptabs button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted); font: 800 12px Manrope, sans-serif; cursor: pointer; }
+  .ptabs button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff); border-color: transparent; }
+  .swipe-hint { display: none; }
   @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
   @media (max-width: 760px) {
     .bot h1 { font-size: 19px; }
-    .status { grid-template-columns: auto 1fr; padding: 14px; }
-    .status-pnl { grid-column: 1 / -1; text-align: left; display: flex; align-items: baseline; gap: 10px; }
-    .orb { width: 52px; height: 52px; border-radius: 16px; }
+    .status { grid-template-columns: 44px 1fr; gap: 10px 12px; padding: 14px; }
+    .status-text { display: contents; }
+    .status-text b { align-self: center; font-size: 15px; line-height: 1.3; }
+    .status-text p { grid-column: 1 / -1; margin: 0; font-size: 12.5px; }
+    .status-text .clock { justify-self: start; padding: 6px 12px; border-radius: 999px; background: rgba(44,245,163,.07); border: 1px solid rgba(44,245,163,.22); }
+    .status-pnl { grid-column: 1 / -1; text-align: left; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.03); }
+    .orb { width: 44px; height: 44px; border-radius: 14px; box-shadow: none; }
+    .orb svg { width: 24px; height: 24px; }
+    .orb::after { border-radius: 18px; inset: -4px; }
+    .rail#assets { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; }
+    .charts { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; gap: 10px; }
+    .charts::-webkit-scrollbar { display: none; }
+    .charts > .card { flex: 0 0 90%; scroll-snap-align: center; }
+    .swipe-hint { display: block; margin: -8px 0 0; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--dim); }
+    .adv summary { min-height: 56px; }
     .actions .btn { flex: 1; justify-content: center; }
     .tiles { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 42%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
     .tiles::-webkit-scrollbar { display: none; }
     .tile { scroll-snap-align: start; }
-    .strats { grid-auto-flow: column; grid-auto-columns: 78%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -18px; padding: 0 18px; }
+    .strats { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 44%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -14px; padding: 0 14px; }
     .strats::-webkit-scrollbar { display: none; }
     .strat { scroll-snap-align: start; }
     .card { padding: 14px; }
+    .chart-head h2 { font-size: 13px; }
+    .strat { padding: 10px 12px; }
+    .strat i { width: 26px; height: 26px; font-size: 13px; margin-bottom: 4px; }
+    .strat b { white-space: normal; line-height: 1.25; }
+    .journal { max-height: 300px; }
+    .entry { font-size: 12.5px; padding: 9px 2px; }
     .coins { grid-auto-columns: 82%; grid-template-columns: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
     .coins::-webkit-scrollbar { display: none; }
     .coin { scroll-snap-align: start; }
@@ -174,23 +207,24 @@
   <div class="layout">
     <form class="settings card" id="settings" novalidate>
       <div><p class="label">Cryptos · 3 max <span class="count" id="asset-count"></span></p><div class="rail" id="assets"></div></div>
-      <div><p class="label">Stratégie</p><div class="strats" id="strats"></div></div>
-      <details class="adv" id="adv" open><summary>Réglages avancés <span id="adv-sum"></span></summary><div class="adv-body">
+      <div><p class="label">Stratégie</p><div class="strats" id="strats"></div><p class="strat-help" id="strat-help"></p></div>
+      <details class="adv" id="adv" open><summary><span class="adv-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></span><span class="adv-txt"><b>Réglages avancés</b><small id="adv-sum"></small></span></summary><div class="adv-body">
       <div class="fields" id="params"></div>
       <div class="fields">
         <label class="field">Bougies<select id="interval"><option value="15m">15 minutes</option><option value="1h" selected>1 heure</option><option value="4h">4 heures</option><option value="1d">1 jour</option></select></label>
         <label class="field">Capital ($)<input id="capital" type="number" min="10" step="10" value="1000" inputmode="decimal"></label>
         <label class="field">Frais / ordre (%)<input id="fee" type="number" min="0" max="5" step="0.05" value="0.1" inputmode="decimal"></label>
       </div>
-      <p class="hint" id="strat-hint"></p>
+      <p class="hint" id="strat-hint" hidden></p>
       </div></details>
       <p class="error" id="error" role="alert"></p>
     </form>
 
     <div class="results">
       <div class="tiles" id="tiles"></div>
+      <div class="charts">
       <section class="card">
-        <div class="chart-head"><h2 id="price-title">Prix et décisions du bot</h2><div class="legend"><span><i class="tri" style="border-bottom:10px solid var(--up)"></i>Achat</span><span><i class="tri" style="border-top:10px solid var(--down)"></i>Vente</span></div></div>
+        <div class="chart-head"><h2 id="price-title">Prix et décisions du bot</h2><div class="ptabs" id="price-tabs" role="tablist" aria-label="Crypto affichée"></div><div class="legend"><span><i class="tri" style="border-bottom:10px solid var(--up)"></i>Achat</span><span><i class="tri" style="border-top:10px solid var(--down)"></i>Vente</span></div></div>
         <div class="plot" id="price-plot"></div>
       </section>
       <section class="card">
@@ -199,6 +233,8 @@
         <button class="table-toggle" type="button" id="table-toggle" aria-expanded="false">Voir les chiffres en tableau</button>
         <div id="equity-table" hidden></div>
       </section>
+      </div>
+      <p class="swipe-hint" aria-hidden="true">← Glisse pour voir prix / valeur du portefeuille →</p>
       <section class="card">
         <div class="chart-head"><h2 id="journal-title">Journal du bot</h2></div>
         <div class="journal" id="journal"></div>
@@ -220,6 +256,8 @@ const HELP = {
   grid: 'Découpe le capital en paliers : achète un palier à chaque baisse de X %, revend chaque palier après un rebond de X %.',
 };
 const NAMES = {rsi: 'RSI', ema: 'Croisement EMA', dca: 'DCA régulier', grid: 'Grille'};
+const TAG = {rsi: 'Acheter la peur', ema: 'Suivre la tendance', dca: 'Achat régulier', grid: 'Baisses et rebonds'};
+const ICON = {rsi: '◐', ema: '⤴', dca: '↻', grid: '▦'};
 const PARAMS = {
   rsi: [['period', 'Période RSI', 1], ['buyBelow', 'Achat sous', 1], ['sellAbove', 'Vente au-dessus de', 1]],
   ema: [['fast', 'EMA rapide', 1], ['slow', 'EMA lente', 1]],
@@ -258,9 +296,10 @@ const cache = new Map();
 
 /* ---------- settings ---------- */
 function renderSettings() {
-  $('assets').innerHTML = ASSETS.map(a => `<label class="pick"><input type="checkbox" name="asset" value="${a}"${prefs.assets.includes(a) ? ' checked' : ''}><span>${a}</span></label>`).join('');
+  const order = [...prefs.assets, ...ASSETS.filter(a => !prefs.assets.includes(a))];
+  $('assets').innerHTML = order.map(a => `<label class="pick"><input type="checkbox" name="asset" value="${a}"${prefs.assets.includes(a) ? ' checked' : ''}><span>${a}</span></label>`).join('');
   lockAssets();
-  $('strats').innerHTML = Object.keys(STRATEGIES).map(k => `<label class="strat"><input type="radio" name="strategy" value="${k}"${k === prefs.strategy ? ' checked' : ''}><b>${NAMES[k]}</b><small>${HELP[k]}</small></label>`).join('');
+  $('strats').innerHTML = Object.keys(STRATEGIES).map(k => `<label class="strat"><input type="radio" name="strategy" value="${k}"${k === prefs.strategy ? ' checked' : ''}><i aria-hidden="true">${ICON[k]}</i><b>${NAMES[k]}</b><small>${TAG[k]}</small></label>`).join('');
   renderParams();
   const picked = $('strats').querySelector('input:checked')?.closest('.strat');
   if (picked) $('strats').scrollLeft = picked.offsetLeft - $('strats').offsetLeft - 18;
@@ -279,6 +318,7 @@ function renderParams() {
   const p = {...STRATEGIES[prefs.strategy].defaults, ...(prefs.params[prefs.strategy] || {})};
   $('params').innerHTML = PARAMS[prefs.strategy].map(([k, label, step]) => `<label class="field">${label}<input type="number" data-param="${k}" step="${step}" value="${p[k]}" inputmode="decimal"></label>`).join('');
   $('strat-hint').textContent = STRATEGIES[prefs.strategy].label + '.';
+  $('strat-help').textContent = HELP[prefs.strategy];
 }
 function advSummary() {
   const p = PARAMS[prefs.strategy].map(([k]) => $('params').querySelector(`[data-param="${k}"]`)?.value).join(' / ');
@@ -543,7 +583,9 @@ function niceTicks(lo, hi, n) {
 function renderPrice(data, trades, asset) {
   if (!data?.length) { $('price-plot').innerHTML = ''; return; }
   const n = (live ? live.assets : prefs.assets).length;
-  $('price-title').textContent = `Prix ${asset} et décisions du bot` + (n > 1 ? ' · touche une crypto en haut pour changer' : '');
+  const list = live ? live.assets : prefs.assets;
+  $('price-title').textContent = n > 1 ? 'Prix et décisions' : `Prix ${asset} et décisions`;
+  $('price-tabs').innerHTML = n > 1 ? list.map(a => `<button type="button" role="tab" data-asset="${a}" aria-selected="${a === asset}">${a}</button>`).join('') : '';
   chart($('price-plot'), {series: [{name: asset, color: '#c9cdf2', pts: data.map(c => ({t: c.closeTime, v: c.close}))}],
     markers: trades.map(t => ({t: t.t, v: t.price, side: t.side, reason: t.reason})), yFmt: v => px(v)});
 }
@@ -574,6 +616,7 @@ $('settings').addEventListener('change', e => {
 });
 let debounce; $('settings').addEventListener('input', e => { if (e.target.type === 'number') { clearTimeout(debounce); debounce = setTimeout(runReplay, 400); } });
 $('settings').addEventListener('submit', e => e.preventDefault());
+$('price-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('coins').addEventListener('click', e => { const b = e.target.closest('.coin'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('start').addEventListener('click', startLive);
 $('stop').addEventListener('click', stopLive);
