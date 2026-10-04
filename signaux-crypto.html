@@ -143,8 +143,25 @@
     letter-spacing: 0.3px; cursor: pointer; transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
   }
   button:hover { border-color: var(--red); color: var(--red); box-shadow: 0 0 18px -6px var(--red); }
-  #alerts { border-color: rgba(62,198,255,0.4); color: var(--accent); }
-  #alerts:hover { border-color: var(--accent); color: var(--accent); background: rgba(62,198,255,0.12); box-shadow: 0 0 18px -6px var(--accent); }
+  /* Alerts: one switch with its state in words (off / on / blocked). */
+  .alert-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px 6px 6px; border-radius: 16px; border: 1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); text-align: left; letter-spacing: 0; }
+  .alert-switch:hover { border-color: var(--border-strong); color: var(--text); box-shadow: none; background: rgba(255,255,255,.05); }
+  .alert-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .as-bell { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,.05); color: var(--muted); transition: background .2s, color .2s; }
+  .as-bell svg { width: 19px; height: 19px; }
+  .as-text b { display: block; font-size: 13px; font-weight: 800; }
+  .as-text small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .as-track { position: relative; width: 44px; height: 26px; border-radius: 13px; background: rgba(150,160,255,.18); transition: background .25s; flex: none; }
+  .as-track i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #c9cdf2; box-shadow: 0 2px 6px rgba(0,0,0,.5); transition: transform .25s, background .25s; }
+  .alert-switch[aria-checked=true] { border-color: rgba(58,230,255,.45); background: rgba(58,230,255,.06); }
+  .alert-switch[aria-checked=true] .as-bell { background: linear-gradient(140deg, #3ae6ff, #8d63ff); color: #0a0718; box-shadow: 0 6px 18px -6px #3ae6ff; }
+  .alert-switch[aria-checked=true] .as-bell svg { animation: ring 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
+  .alert-switch[aria-checked=true] .as-text small { color: var(--green); }
+  .alert-switch[aria-checked=true] .as-track { background: linear-gradient(120deg, #3ae6ff, #8d63ff); }
+  .alert-switch[aria-checked=true] .as-track i { transform: translateX(18px); background: #fff; }
+  .alert-switch.blocked .as-text small { color: var(--red); }
+  @keyframes ring { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(14deg); } 88% { transform: rotate(-12deg); } 92% { transform: rotate(8deg); } 96% { transform: rotate(-4deg); } }
+  @media (prefers-reduced-motion: reduce) { .alert-switch[aria-checked=true] .as-bell svg { animation: none; } .as-track i { transition: none; } }
   .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
   .warn {
     background: rgba(230,185,92,0.06); border: 1px solid rgba(230,185,92,0.3); border-radius: 14px;
@@ -187,7 +204,6 @@
   .table-wrap { border-radius: 20px; }
   td strong { font-weight: 700; }
   td.price strong { font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: -.3px; }
-  #alerts { min-height: 44px; }
   @media (prefers-reduced-motion: reduce) { .swipe-hint i { animation: none; } }
   details.note-box summary { cursor: pointer; color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 4px 0; list-style-position: inside; }
   details.note-box summary:hover { color: var(--accent); }
@@ -205,7 +221,9 @@
     .sg-sub { font-size: 12px; margin-top: 4px; }
     .sg-actions { flex-wrap: nowrap; }
     .sg-actions .status { font-size: 11.5px; min-width: 0; }
-    #alerts { padding: 6px 12px; min-height: 36px; font-size: 12px; flex: none; }
+    .alert-switch { flex: none; min-height: 44px; padding: 4px 6px 4px 4px; gap: 8px; }
+    .as-bell { width: 32px; height: 32px; }
+    .as-text small { font-size: 11px; }
     .fund-chip { font-size: 11.5px; padding: 3px 7px; }
     .sg-head h1 { font-size: 19px; }
     .sg-actions { justify-content: space-between; }
@@ -247,7 +265,11 @@
 <div class="container">
   <header class="sg-head">
     <div><h1>Signaux &amp; positionnement</h1><p class="sg-sub">RSI 14 sur bougies 15 min · zone d’achat sous 30 · zone de vente au-dessus de 70</p></div>
-    <div class="sg-actions"><div class="status"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div><button id="alerts" type="button">🔔 Alertes : OFF</button></div>
+    <div class="sg-actions"><div class="status"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div><button id="alerts" class="alert-switch" type="button" role="switch" aria-checked="false" aria-describedby="alerts-state">
+      <span class="as-bell" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+      <span class="as-text"><b>Alertes</b><small id="alerts-state">Désactivées</small></span>
+      <span class="as-track" aria-hidden="true"><i></i></span>
+    </button></div>
   </header>
 
   <section class="kpis" aria-label="Résumé">
@@ -438,7 +460,9 @@ function signalAlert(coin, rsi, zone) {
   beep(isBuy ? 880 : 440);
   flashTitle((isBuy ? '🟢 ' : '🔴 ') + coin.short + ' !');
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('Signal ' + coin.short, { body, tag: 'sig-' + coin.sym });
+    const opts = { body, tag: 'sig-' + coin.sym, icon: 'icon-192.png?v=20261004-fav', badge: 'favicon.png?v=20261004-fav', renotify: true };
+    (swReady ? swReady.then(reg => reg.showNotification('Signal ' + coin.short, opts)) : Promise.reject())
+      .catch(() => { try { new Notification('Signal ' + coin.short, opts); } catch (e) {} });
   }
 }
 
@@ -522,7 +546,8 @@ function connectWS() {
   ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=' + streams);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('live');
-    document.getElementById('status').textContent = 'EN DIRECT — WebSocket Binance';
+    document.getElementById('status').textContent = 'En direct';
+    document.getElementById('status').title = 'Prix en temps réel via WebSocket Binance';
   };
   ws.onmessage = ev => {
     const d = JSON.parse(ev.data).data;
@@ -691,17 +716,25 @@ for (const b of document.querySelectorAll('.chips button')) b.addEventListener('
   for (const x of document.querySelectorAll('.chips button')) x.setAttribute('aria-pressed', String(x === b));
   render();
 });
+const swReady = 'serviceWorker' in navigator ? navigator.serviceWorker.register('sw.js', { scope: './' }).then(() => navigator.serviceWorker.ready).catch(() => null) : null;
+function renderAlerts() {
+  const btn = document.getElementById('alerts'), state = document.getElementById('alerts-state');
+  const blocked = 'Notification' in window && Notification.permission === 'denied';
+  btn.setAttribute('aria-checked', String(alertsOn));
+  btn.classList.toggle('blocked', alertsOn && blocked);
+  state.textContent = !alertsOn ? 'Désactivées' : blocked ? 'Bloquées par le navigateur' : !('Notification' in window) ? 'Son et titre seulement' : 'Achat et vente, page ouverte';
+  btn.title = alertsOn && blocked ? 'Autorise les notifications pour ce site dans les réglages du navigateur.' : 'Notification, bip et titre clignotant quand une crypto entre en zone d’achat ou de vente.';
+}
 document.getElementById('alerts').addEventListener('click', async () => {
   alertsOn = !alertsOn;
   if (alertsOn && 'Notification' in window && Notification.permission === 'default') {
     await Notification.requestPermission();
   }
-  localStorage.setItem('crypto-bot-alerts', alertsOn ? 'on' : 'off');
-  document.getElementById('alerts').textContent = '🔔 Alertes : ' + (alertsOn ? 'ON' : 'OFF');
+  try { localStorage.setItem('crypto-bot-alerts', alertsOn ? 'on' : 'off'); } catch (e) {}
+  renderAlerts();
   if (alertsOn) beep(660);
 });
-
-document.getElementById('alerts').textContent = '🔔 Alertes : ' + (alertsOn ? 'ON' : 'OFF');
+renderAlerts();
 async function refreshUniverse() {
   const before = COINS.map(c => c.sym).sort().join(',');
   await buildCoins();
