@@ -160,3 +160,46 @@ export function stats(state, equity, capital) {
     maxDrawdown: maxDd * 100, fees: state.fees,
   };
 }
+
+// Splits the capital evenly between several cryptos (one independent bot each) and adds the portfolios up.
+// The combined curve only keeps the candle times every crypto has, so the totals always compare like with like.
+export function simulateMany(seriesByAsset, cfg) {
+  validateConfig(cfg);
+  const names = Object.keys(seriesByAsset);
+  if (!names.length) throw Error('Choisis au moins une crypto.');
+  const sub = {...cfg, capital: cfg.capital / names.length}, assets = {};
+  for (const a of names) assets[a] = simulate(seriesByAsset[a], sub);
+  const maps = names.map(a => new Map(assets[a].equity.map(e => [e.t, e])));
+  const equity = assets[names[0]].equity.map(e => e.t).filter(t => maps.every(m => m.has(t)))
+    .map(t => ({t, bot: maps.reduce((s, m) => s + m.get(t).bot, 0), hold: maps.reduce((s, m) => s + m.get(t).hold, 0)}));
+  if (!equity.length) throw Error('Pas assez d’historique commun entre ces cryptos.');
+  const trades = names.flatMap(a => assets[a].state.trades.map(t => ({...t, asset: a}))).sort((x, y) => x.t - y.t);
+  const fees = names.reduce((s, a) => s + assets[a].state.fees, 0);
+  return {assets, equity, trades, stats: stats({trades, fees}, equity, cfg.capital)};
+}
+
+// Plain-language reading of what the bot sees right now and what would make it act on the next close.
+export function readNow(state, candles, cfg) {
+  const p = validateConfig(cfg), closes = candles.map(c => c.close), last = closes.at(-1);
+  const holding = state.qty > 0;
+  if (cfg.strategy === 'rsi') {
+    const r = rsiSeries(closes, p.period).at(-1);
+    if (r === null || r === undefined) return {value: 'RSI —', wait: 'Pas encore assez de bougies.'};
+    return {value: `RSI ${r.toFixed(0)}`, gauge: r / 100, wait: holding ? `vend au-dessus de ${p.sellAbove}` : `achète sous ${p.buyBelow}`};
+  }
+  if (cfg.strategy === 'ema') {
+    const f = emaSeries(closes, p.fast).at(-1), s = emaSeries(closes, p.slow).at(-1);
+    if (f === null || s === null) return {value: 'EMA —', wait: 'Pas encore assez de bougies.'};
+    const gap = (f / s - 1) * 100, up = f > s;
+    return {value: `EMA ${up ? '▲' : '▼'} ${Math.abs(gap).toFixed(2).replace('.', ',')} %`,
+      wait: holding ? `vend si l’EMA ${p.fast} repasse sous l’EMA ${p.slow}` : up ? `tendance déjà haussière : achète au prochain croisement vers le haut` : `achète quand l’EMA ${p.fast} passe au-dessus de l’EMA ${p.slow}`};
+  }
+  if (cfg.strategy === 'dca') {
+    const left = (p.every - state.ticks % p.every) % p.every;
+    if (state.cash <= 0.01) return {value: 'Capital investi', wait: p.takeProfit > 0 ? `vend à +${p.takeProfit} % sur le prix moyen` : 'plus rien à acheter'};
+    return {value: left === 0 ? 'Achat à la prochaine clôture' : `Achat dans ${left} bougie${left > 1 ? 's' : ''}`, wait: `${fmt(Math.min(p.amount, state.cash))} $ par achat`};
+  }
+  const lots = state.lots.length, buyAt = state.ref === null ? last : state.ref * (1 - p.step / 100);
+  const sellAt = lots ? Math.min(...state.lots.map(l => l.price)) * (1 + p.step / 100) : null;
+  return {value: `${lots}/${p.levels} paliers achetés`, wait: (lots < p.levels ? `achète sous ${fmt(buyAt)} $` : 'grille pleine') + (sellAt ? ` · vend au-dessus de ${fmt(sellAt)} $` : '')};
+}
