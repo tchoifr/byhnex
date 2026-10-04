@@ -1,7 +1,7 @@
 {
   "name": "Byhnex — workspace crypto",
   "short_name": "Byhnex",
-  "description": "Cours réels, signaux, backtest et portefeuille virtuel crypto. Sans compte, données sur votre appareil.",
+  "description": "Cours réels, signaux, graphiques et portefeuille virtuel crypto. Sans compte, données sur votre appareil.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",

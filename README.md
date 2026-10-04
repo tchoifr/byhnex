@@ -1,6 +1,6 @@
 # Byhnex — cours réels, portefeuille virtuel
 
-Site statique : accueil avec boîte à outils, recherche et favoris ; sept outils dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
+Site statique : accueil avec boîte à outils, recherche et favoris ; cinq outils dans le menu (Dashboard Marché et Backtest retirés du menu, pages toujours accessibles par leur adresse) dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
 
 ## Démarrer et vérifier
 - `npm.cmd start` : http://localhost:5173
