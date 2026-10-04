@@ -53,6 +53,9 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
 
 ## Structure actuelle
 
+- `bot.html` / `bot-engine.js` : bot de trading virtuel (argent fictif uniquement, jamais d'ordre reel).
+- `cycles.html` : Rainbow Chart + saisonnalite BTC ; `rainbow-crypto.html` et `saisonnalite-btc.html` sont des redirections.
+
 - `index.html` : accueil Byhnex, cartes vers les six outils.
 - `crypto-dashboard.html` : top 20 CoinGecko (refresh 60 s) + quantites personnelles
   saisies a la main. Stockage : `crypto-portfolio-v1`.

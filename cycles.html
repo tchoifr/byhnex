@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Cycles crypto — Byhnex</title>
+<meta name="description" content="Cycles crypto : Rainbow Chart des 10 premières cryptos sur leur historique complet et saisonnalité mensuelle du Bitcoin depuis 2014.">
+<meta name="theme-color" content="#05060e">
+<link rel="canonical" href="https://osvalt16.github.io/byhnex/cycles.html">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Byhnex">
+<meta property="og:title" content="Cycles crypto — Byhnex">
+<meta property="og:description" content="Cycles crypto : Rainbow Chart des 10 premières cryptos sur leur historique complet et saisonnalité mensuelle du Bitcoin depuis 2014.">
+<meta property="og:url" content="https://osvalt16.github.io/byhnex/cycles.html">
+<meta property="og:image" content="https://osvalt16.github.io/byhnex/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  /* Layout: one header with a two-way switch (Rainbow / Saisonnalité); each view is a summary line, then its chart. */
+  .cy { --panel: rgba(16,19,40,.62); --line: rgba(150,160,255,.14); --ink: #eef0ff; --muted: #8f95bd; --dim: #5f658d; --up: #2cf5a3; --down: #ff5c7c; --cyan: #3ae6ff; }
+  .cy { display: flex; flex-direction: column; gap: 14px; max-width: 1240px; margin: 0 auto; color: var(--ink); font-family: Manrope, 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .cy, .cy > * { min-width: 0; }
+  .cy { width: 100%; }
+  .cy h1 { font: 600 24px/1.2 Unbounded, 'Segoe UI', sans-serif; letter-spacing: -.6px; margin: 0; }
+  .cy-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .cy-head-right { display: flex; align-items: center; gap: 10px; }
+  .switch { display: inline-flex; padding: 4px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+  .switch button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: none; color: var(--muted); font: 700 13px Manrope, sans-serif; cursor: pointer; }
+  .switch button[aria-selected=true] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff 55%,#ff52d9); }
+  .switch button:focus-visible, .coin:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  select.cur { min-height: 40px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5,6,14,.7); color: var(--ink); padding: 0 10px; font: 700 13px Manrope, sans-serif; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); min-width: 0; position: relative; }
+  .error { display: none; padding: 12px 16px; border-radius: 14px; border: 1px solid rgba(255,92,124,.4); background: rgba(255,92,124,.08); color: var(--down); font-size: 13px; font-weight: 700; }
+  .summary { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 13.5px; color: var(--muted); }
+  .summary strong { color: var(--ink); font: 600 17px 'JetBrains Mono', monospace; letter-spacing: -.4px; }
+  .live { color: var(--up); font-size: 11px; font-weight: 800; letter-spacing: .8px; }
+  .note-chip { display: inline-block; font-size: 12px; color: #ffd994; background: rgba(255,200,97,.08); border: 1px solid rgba(255,200,97,.28); border-radius: 999px; padding: 3px 10px; }
+  .band-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #0a0718; }
+  .coins { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .coins::-webkit-scrollbar { display: none; }
+  .coin { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.02); color: var(--muted); font: 700 13px Manrope, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .coin[aria-pressed=true] { color: var(--ink); border-color: rgba(58,230,255,.55); background: rgba(58,230,255,.08); }
+  .coin i { width: 9px; height: 9px; border-radius: 50%; }
+  canvas { display: block; width: 100%; border-radius: 12px; touch-action: pan-y; cursor: crosshair; }
+  #rb-tip { position: absolute; display: none; pointer-events: none; min-width: 170px; padding: 9px 11px; border-radius: 12px; background: rgba(8,10,24,.95); border: 1px solid var(--line); font-size: 12px; line-height: 1.55; box-shadow: 0 12px 30px -12px #000; z-index: 2; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; }
+  .warn { margin: 0; padding: 13px 16px; border-radius: 16px; border: 1px solid rgba(255,200,97,.28); background: rgba(255,200,97,.06); color: #ffd994; font-size: 12.5px; line-height: 1.6; }
+  details.method { color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+  details.method summary { cursor: pointer; font-weight: 700; color: var(--ink); min-height: 32px; }
+  .table-wrap { overflow-x: auto; border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 12.5px; }
+  th, td { padding: 8px 6px; text-align: right; white-space: nowrap; border-bottom: 1px solid rgba(150,160,255,.07); font-family: 'JetBrains Mono', monospace; }
+  th { font: 700 11px Manrope, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: #0d0f22; font-family: Manrope, sans-serif; font-weight: 700; z-index: 1; }
+  tr.stats td { border-top: 1px solid var(--line); font-weight: 700; }
+  td.now { outline: 1px dashed rgba(58,230,255,.75); outline-offset: -3px; font-style: italic; }
+  .swipe { display: none; font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 760px) {
+    .cy h1 { font-size: 19px; }
+    .cy-head { flex-direction: column; align-items: stretch; }
+    .cy-head-right { justify-content: space-between; }
+    .switch { flex: 1; }
+    .switch button { flex: 1; }
+    .card { padding: 14px; }
+    .swipe { display: block; }
+    .coins { margin: 0 -14px; padding: 0 14px; }
+  }
+</style>
+<link rel="stylesheet" href="byhnex.css?v=20261003-ovh"><link rel="stylesheet" href="sidebar.css?v=20261004-w3"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;600&display=swap"><link rel="stylesheet" href="web3.css?v=20261004-w3"></head>
+<body class="byhnex-shell byhnex-tool"><aside data-shared-sidebar></aside>
+<div class="container"><div class="cy">
+  <header class="cy-head">
+    <h1>Cycles crypto</h1>
+    <div class="cy-head-right">
+      <div class="switch" role="tablist" aria-label="Vue">
+        <button role="tab" id="tab-rainbow" aria-controls="view-rainbow" aria-selected="true">Rainbow</button>
+        <button role="tab" id="tab-saison" aria-controls="view-saison" aria-selected="false" title="Saisonnalité du Bitcoin">Saisonnalité</button>
+      </div>
+      <select class="cur" id="cur" title="Changer de devise" aria-label="Devise"></select>
+    </div>
+  </header>
+
+  <!-- ---------------- Rainbow ---------------- -->
+  <section id="view-rainbow" role="tabpanel" aria-labelledby="tab-rainbow" class="cy">
+    <div class="error" id="rb-error"></div>
+    <div class="coins" id="rb-coins" aria-label="Crypto"><span style="color:var(--muted);font-size:13px">Chargement du classement…</span></div>
+    <div class="card"><div class="summary" id="rb-summary">Chargement de l’historique…</div></div>
+    <div class="card">
+      <canvas id="rb-chart" aria-label="Rainbow Chart : prix et bandes de valorisation en échelle logarithmique"></canvas>
+      <div id="rb-tip"></div>
+      <div class="legend" id="rb-legend"></div>
+    </div>
+    <p class="warn">Le Rainbow Chart est un repère visuel, pas un modèle scientifique : une tendance logarithmique colorée qui paraît sage une fois le passé connu. Il se recalcule avec chaque nouveau prix et une crypto peut sortir de l’arc-en-ciel dans les deux sens. Pas un conseil financier.</p>
+    <details class="method"><summary>Comment c’est calculé</summary>
+      Historique quotidien depuis les origines de chaque crypto (CoinCodex) et prix en direct (Binance). On ajuste ln(prix) = a + b·ln(jours depuis la naissance), avec le bloc genesis du 3 janvier 2009 pour le Bitcoin et le premier cours connu moins 180 jours pour les autres. Les 9 bandes ont la même largeur et couvrent l’écart à la tendance entre les 2 % de jours les plus bas et les 2 % les plus hauts : lors des excès extrêmes, le prix sort de l’arc-en-ciel et compte dans la bande du bas ou du haut. Les bandes sont prolongées de 18 mois.
+    </details>
+  </section>
+
+  <!-- ---------------- Saisonnalité ---------------- -->
+  <section id="view-saison" role="tabpanel" aria-labelledby="tab-saison" class="cy" hidden>
+    <div class="error" id="ss-error"></div>
+    <div class="card"><div class="summary" id="ss-summary">Chargement des rendements mensuels depuis 2014…</div></div>
+    <div class="card"><div class="swipe">Glisse le tableau pour voir toute l’année →</div><div class="table-wrap" id="ss-table"></div></div>
+    <p class="warn">La saisonnalité décrit le passé, elle ne prédit pas l’avenir : environ 12 valeurs par mois, c’est statistiquement très peu, et les motifs connus de tous s’usent. Pas un conseil financier.</p>
+    <details class="method"><summary>Comment c’est calculé</summary>
+      Rendement d’un mois = variation entre la dernière clôture BTC/USD du mois et celle du mois précédent (CoinCodex depuis 2014). Couleur proportionnelle à l’ampleur (saturée à ±30 %). Le mois en cours, en pointillés, suit le prix en direct toutes les 60 s et n’entre pas dans les statistiques du bas.
+    </details>
+  </section>
+</div></div>
+
+<script src="network.js?v=20261003-ovh"></script><script src="devises.js?v=20261003-ovh"></script>
+<script>
+'use strict';
+const DAY = 86400000;
+const $ = id => document.getElementById(id);
+const views = {rainbow: null, saison: null};
+
+/* ======================= Rainbow ======================= */
+views.rainbow = (() => {
+  const BANDS = [
+    {c: '#4527a0', label: 'Soldes d’incendie'}, {c: '#1e88e5', label: 'Achète !'}, {c: '#26a69a', label: 'Accumule'},
+    {c: '#43a047', label: 'Encore pas cher'}, {c: '#c0ca33', label: 'HODL !'}, {c: '#fdd835', label: 'Est-ce une bulle ?'},
+    {c: '#fb8c00', label: 'FOMO intense'}, {c: '#f4511e', label: 'Vends. Sérieusement.'}, {c: '#c62828', label: 'Bulle maximale'},
+  ];
+  const GENESIS = {BTC: Date.UTC(2009, 0, 3)};
+  const STABLES = new Set(['usdt','usdc','usds','usde','dai','fdusd','tusd','pyusd','busd','usdp','gusd','eurc','eurt','usdtb','susds','usd1','bsc-usd','usdg','usyc','usdf','usdx','rlusd','frax','lusd','usd0','deusd','usdy','steth','wsteth','weeth','wbtc','cbbtc','weth','reth','wbeth','meth','ezeth','rseth','paxg','xaut','kau']);
+  const FALLBACK = [{short: 'BTC', name: 'Bitcoin', wsSym: 'BTCUSDT'}, {short: 'ETH', name: 'Ethereum', wsSym: 'ETHUSDT'}, {short: 'SOL', name: 'Solana', wsSym: 'SOLUSDT'}, {short: 'XRP', name: 'XRP', wsSym: 'XRPUSDT'}, {short: 'DOGE', name: 'Dogecoin', wsSym: 'DOGEUSDT'}];
+  let COINS = [], current = null, ws = null, view = null, hover = null, started = false;
+  const cache = {};
+
+  async function buildCoins() {
+    try {
+      const [infoRes, topRes] = await Promise.all([
+        fetch('https://api.binance.com/api/v3/exchangeInfo'),
+        fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=60&page=1'),
+      ]);
+      if (!infoRes.ok || !topRes.ok) throw Error('HTTP');
+      const pairs = new Set((await infoRes.json()).symbols.filter(s => s.status === 'TRADING').map(s => s.symbol));
+      const list = [];
+      for (const c of await topRes.json()) {
+        const short = c.symbol.toUpperCase();
+        if (STABLES.has(c.symbol.toLowerCase()) || list.some(x => x.short === short)) continue;
+        // live price in dollars only: USDT or USDC pairs (USDT counted as USD, like the rest of the site)
+        const quote = ['USDT', 'USDC'].find(q => pairs.has(short + q));
+        if (quote) list.push({short, name: c.name, wsSym: short + quote});
+        if (list.length === 10) break;
+      }
+      COINS = list.length >= 5 ? list : FALLBACK;
+    } catch { if (!COINS.length) COINS = FALLBACK; }
+  }
+
+  function renderCoins() {
+    $('rb-coins').innerHTML = COINS.map(c => {
+      const m = cache[c.short]?.model;
+      return `<button class="coin" type="button" data-s="${c.short}" aria-pressed="${current === c.short}">${m ? `<i style="background:${BANDS[m.bandOf(lastPoint(cache[c.short]).price, lastPoint(cache[c.short]).t)].c}"></i>` : ''}${c.short}</button>`;
+    }).join('');
+    for (const b of $('rb-coins').querySelectorAll('.coin')) b.onclick = () => select(b.dataset.s);
+  }
+
+  async function loadHistory(coin) {
+    if (cache[coin.short]) return cache[coin.short];
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch(`https://coincodex.com/api/coincodex/get_coin_history/${coin.short}/2010-01-01/${today}/3000`);
+    if (!res.ok) throw Error('HTTP ' + res.status);
+    const j = await res.json();
+    const pts = (j[coin.short] || []).map(p => ({t: p[0] * 1000, price: p[1]})).filter(p => p.price > 0 && Number.isFinite(p.t)).sort((a, b) => a.t - b.t);
+    if (pts.length < 60) throw Error('historique trop court');
+    const dropped = trimLaunchOutliers(pts);
+    const entry = {pts, live: null, dropped, model: buildModel(pts, coin.short)};
+    cache[coin.short] = entry;
+    return entry;
+  }
+
+  // The first days of a coin trade on almost no liquidity: drop launch prices far above the next weeks' median.
+  function trimLaunchOutliers(pts) {
+    const ref = pts.slice(0, 40).map(p => p.price).sort((a, b) => a - b), median = ref[Math.floor(ref.length / 2)];
+    let i = 0;
+    while (i < pts.length - 60 && pts[i].t < pts[0].t + 30 * DAY && pts[i].price > median * 5) i++;
+    if (i) pts.splice(0, i);
+    return i;
+  }
+
+  const quantile = (sorted, q) => { const k = (sorted.length - 1) * q, f = Math.floor(k); return sorted[f] + (sorted[Math.min(f + 1, sorted.length - 1)] - sorted[f]) * (k - f); };
+
+  function buildModel(pts, short) {
+    const genesis = GENESIS[short] && GENESIS[short] < pts[0].t ? GENESIS[short] : pts[0].t - 180 * DAY;
+    const lx = t => Math.log(Math.max(1, (t - genesis) / DAY));
+    const X = pts.map(p => lx(p.t)), Y = pts.map(p => Math.log(p.price)), n = X.length;
+    const mx = X.reduce((s, v) => s + v, 0) / n, my = Y.reduce((s, v) => s + v, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (X[i] - mx) * (Y[i] - my); den += (X[i] - mx) ** 2; }
+    const b = den ? num / den : 0, a = my - b * mx;
+    const fit = t => a + b * lx(t);
+    const res = Y.map((y, i) => y - fit(pts[i].t)).sort((p, q) => p - q);
+    const lo = quantile(res, 0.02), hi = quantile(res, 0.98), step = (hi - lo) / BANDS.length;
+    // Nine equal bands; the rare extreme days (2 % on each side) may leave the rainbow, as on any Rainbow Chart.
+    const edge = (t, i) => fit(t) + lo + i * step;
+    const bandOf = (price, t) => Math.max(0, Math.min(BANDS.length - 1, Math.floor((Math.log(price) - fit(t) - lo) / step)));
+    return {fit, edge, bandOf, slope: b, years: (pts.at(-1).t - pts[0].t) / (365.25 * DAY)};
+  }
+
+  const lastPoint = e => e.live || e.pts.at(-1);
+  const fmtP = usd => {
+    const v = Devises.convUsd(usd);
+    if (!Number.isFinite(v)) return '—';
+    return (v >= 1000 ? v.toLocaleString('fr-FR', {maximumFractionDigits: 0}) : v >= 1 ? v.toLocaleString('fr-FR', {maximumFractionDigits: 2}) : v.toLocaleString('fr-FR', {maximumSignificantDigits: 4})) + ' ' + Devises.symbol();
+  };
+  const ratio = (e, p) => Math.exp(Math.log(p.price) - e.model.fit(p.t));
+
+  function summary(coin) {
+    const e = cache[coin.short], p = lastPoint(e), band = e.model.bandOf(p.price, p.t), r = ratio(e, p);
+    $('rb-summary').innerHTML =
+      `<span>${coin.name} ${e.live ? '<span class="live">● EN DIRECT</span>' : ''}</span><strong>${fmtP(p.price)}</strong>` +
+      `<span><span class="band-chip" style="background:${BANDS[band].c};color:${band < 2 || band > 6 ? '#fff' : '#0a0718'}">${BANDS[band].label}</span></span>` +
+      `<span>${r >= 1 ? r.toFixed(1).replace('.', ',') + '× au-dessus' : (1 / r).toFixed(1).replace('.', ',') + '× en dessous'} de la tendance</span>` +
+      `<span style="font-size:12px">${e.model.years.toFixed(1).replace('.', ',')} ans d’historique</span>` +
+      (e.model.years < 4 ? '<span class="note-chip">Historique court : modèle peu fiable</span>' : '') +
+      (e.dropped ? `<span class="note-chip" title="Prix de lancement aberrants, liquidité quasi nulle">${e.dropped} prix de lancement écarté(s)</span>` : '') +
+      (e.model.slope <= 0 ? '<span class="note-chip">Tendance de fond négative : le Rainbow ne s’applique pas à cette crypto</span>' : '');
+  }
+
+  async function select(short) {
+    const coin = COINS.find(c => c.short === short);
+    if (!coin) return;
+    current = short; hover = null; $('rb-tip').style.display = 'none';
+    renderCoins();
+    $('rb-summary').textContent = `Chargement de l’historique de ${coin.name}…`;
+    const ctx = $('rb-chart').getContext('2d'); ctx.clearRect(0, 0, $('rb-chart').width, $('rb-chart').height);
+    try {
+      await loadHistory(coin);
+      if (current !== short) return;
+      $('rb-error').style.display = 'none';
+      summary(coin); draw(); renderCoins(); connect(coin);
+    } catch (err) {
+      if (current !== short) return;
+      $('rb-error').style.display = 'block';
+      $('rb-error').textContent = `Historique indisponible pour ${coin.short} (${err.message}). Réessaie dans un instant.`;
+      $('rb-summary').textContent = 'Données indisponibles';
+    }
+  }
+
+  function connect(coin) {
+    if (ws) { ws.onclose = null; try { ws.close(); } catch {} }
+    const sock = new WebSocket(`wss://stream.binance.com:9443/ws/${coin.wsSym.toLowerCase()}@miniTicker`);
+    ws = sock;
+    let lastDraw = 0;
+    sock.onmessage = ev => {
+      const price = parseFloat(JSON.parse(ev.data).c), e = cache[coin.short];
+      if (current !== coin.short || !e || !(price > 0)) return;
+      e.live = {t: Date.now(), price};       // kept apart: the last daily close stays intact
+      summary(coin);
+      if (Date.now() - lastDraw > 2000) { lastDraw = Date.now(); draw(); }
+    };
+    sock.onclose = () => { if (ws === sock && current === coin.short) setTimeout(() => connect(coin), 3000); };
+    sock.onerror = () => sock.close();
+  }
+
+  // Price ticks in the displayed currency: 1-2-5 steps per decade when the range is short, decades otherwise.
+  function priceTicks(loDisp, hiDisp) {
+    const decades = (hiDisp - loDisp) / Math.LN10, mults = decades > 4 ? [1] : decades > 2 ? [1, 3] : [1, 2, 5];
+    const out = [];
+    for (let ex = Math.floor(loDisp / Math.LN10) - 1; ex <= Math.ceil(hiDisp / Math.LN10); ex++)
+      for (const m of mults) { const v = m * 10 ** ex, l = Math.log(v); if (l >= loDisp && l <= hiDisp) out.push(v); }
+    return out;
+  }
+  const tickLabel = v => (v >= 1000 ? (v >= 1e6 ? (v / 1e6).toLocaleString('fr-FR') + ' M' : v >= 1e4 ? (v / 1e3).toLocaleString('fr-FR') + ' k' : v.toLocaleString('fr-FR')) : v.toLocaleString('fr-FR', {maximumSignificantDigits: 3})) + ' ' + Devises.symbol();
+
+  function draw() {
+    const e = cache[current], canvas = $('rb-chart');
+    if (!e || $('view-rainbow').hidden) return;
+    const W = canvas.clientWidth;
+    if (W < 50) return;
+    const H = Math.max(300, Math.min(520, Math.round(W * (W < 600 ? 0.9 : 0.5))));
+    const dpr = devicePixelRatio || 1;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pts = e.live ? [...e.pts, e.live] : e.pts, edge = e.model.edge, cur = lastPoint(e);
+    const curBand = e.model.bandOf(cur.price, cur.t), k = Math.log(Devises.convUsd(1));
+    const t0 = pts[0].t, t1 = Date.now() + 548 * DAY, ML = 8, MT = 10, MB = 26;
+    let lo = Infinity, hi = -Infinity;
+    for (const t of [t0, t1]) { lo = Math.min(lo, edge(t, 0)); hi = Math.max(hi, edge(t, BANDS.length)); }
+    // Frame on the rainbow and on prices after the first 3 % of history, so launch days don't squash the chart.
+    const skip = t0 + (pts.at(-1).t - t0) * 0.03;
+    for (const p of pts) { if (p.t < skip) continue; const l = Math.log(p.price); lo = Math.min(lo, l); hi = Math.max(hi, l); }
+    const pad = (hi - lo) * 0.03; lo -= pad; hi += pad;
+    ctx.font = '11px Manrope, "Segoe UI", sans-serif';
+    const ticks = priceTicks(lo + k, hi + k), MR = 14 + Math.max(40, ...ticks.map(v => ctx.measureText(tickLabel(v)).width));
+    const xs = t => ML + (t - t0) / (t1 - t0) * (W - ML - MR), ys = l => MT + (hi - l) / (hi - lo) * (H - MT - MB);
+    view = {t0, t1, ML, MR, W, H, MT, MB, xs, ys, pts};
+    ctx.clearRect(0, 0, W, H);
+    const S = 180;
+    for (let i = 0; i < BANDS.length; i++) {
+      ctx.beginPath();
+      for (let s = 0; s <= S; s++) { const t = t0 + (t1 - t0) * s / S; s ? ctx.lineTo(xs(t), ys(edge(t, i + 1))) : ctx.moveTo(xs(t), ys(edge(t, i + 1))); }
+      for (let s = S; s >= 0; s--) { const t = t0 + (t1 - t0) * s / S; ctx.lineTo(xs(t), ys(edge(t, i))); }
+      ctx.closePath(); ctx.globalAlpha = i === curBand ? 0.8 : 0.5; ctx.fillStyle = BANDS[i].c; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.font = '11px Manrope, "Segoe UI", sans-serif'; ctx.fillStyle = '#8f95bd'; ctx.strokeStyle = 'rgba(238,240,255,.12)'; ctx.lineWidth = 1;
+    for (const v of ticks) {
+      const y = ys(Math.log(v) - k);
+      if (y < MT + 6 || y > H - MB - 2) continue;
+      ctx.beginPath(); ctx.moveTo(ML, y); ctx.lineTo(W - MR, y); ctx.stroke();
+      ctx.fillText(tickLabel(v), W - MR + 6, y + 4);
+    }
+    const y0 = new Date(t0).getUTCFullYear() + 1, y1 = new Date(t1).getUTCFullYear(), span = y1 - y0;
+    const yStep = Math.max(1, Math.ceil(span / Math.max(2, Math.floor((W - ML - MR) / 70))));
+    ctx.textAlign = 'center';
+    for (let y = y0; y <= y1; y += yStep) { const x = xs(Date.UTC(y, 0, 1)); if (x > ML + 16 && x < W - MR - 16) ctx.fillText(String(y), x, H - 8); }
+    ctx.textAlign = 'start';
+    const nowX = xs(Date.now());
+    ctx.strokeStyle = 'rgba(238,240,255,.3)'; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(nowX, MT); ctx.lineTo(nowX, H - MB); ctx.stroke(); ctx.setLineDash([]);
+    ctx.save(); ctx.beginPath(); ctx.rect(ML, MT, W - ML - MR, H - MT - MB); ctx.clip();
+    ctx.beginPath();
+    pts.forEach((p, i) => { const x = xs(p.t), y = ys(Math.log(p.price)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = '#f4f6ff'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(5,6,14,.9)'; ctx.shadowBlur = 4; ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
+    ctx.beginPath(); ctx.arc(xs(cur.t), ys(Math.log(cur.price)), 4.5, 0, 7); ctx.fillStyle = '#f4f6ff'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#05060e'; ctx.stroke();
+    if (hover) {
+      const hx = xs(hover.t), hy = ys(Math.log(hover.price));
+      ctx.strokeStyle = 'rgba(58,230,255,.7)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(hx, MT); ctx.lineTo(hx, H - MB); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.strokeStyle = '#3ae6ff'; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+
+  function showAt(clientX) {
+    const e = cache[current];
+    if (!view || !e) return;
+    const canvas = $('rb-chart'), tip = $('rb-tip'), rect = canvas.getBoundingClientRect();
+    const t = view.t0 + (clientX - rect.left - view.ML) / (view.W - view.ML - view.MR) * (view.t1 - view.t0);
+    let best = view.pts[0], bd = Infinity;
+    for (const p of view.pts) { const d = Math.abs(p.t - t); if (d < bd) { bd = d; best = p; } }
+    hover = best;
+    const band = e.model.bandOf(best.price, best.t), r = ratio(e, best);
+    tip.innerHTML = `<strong>${new Date(best.t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'})}</strong><br>${fmtP(best.price)} · ${r.toFixed(2).replace('.', ',')}× la tendance<br><span style="color:${BANDS[band].c}">■</span> ${BANDS[band].label}`;
+    tip.style.display = 'block';
+    const x = canvas.offsetLeft + view.xs(best.t);
+    tip.style.left = Math.min(canvas.offsetLeft + view.W - tip.offsetWidth, Math.max(canvas.offsetLeft, x + 14)) + 'px';
+    tip.style.top = Math.max(canvas.offsetTop, canvas.offsetTop + view.ys(Math.log(best.price)) - 70) + 'px';
+    requestAnimationFrame(draw);
+  }
+  const hideTip = () => { hover = null; $('rb-tip').style.display = 'none'; draw(); };
+
+  async function start() {
+    if (started) return draw();
+    started = true;
+    $('rb-legend').innerHTML = [...BANDS].reverse().map(b => `<span><i style="background:${b.c}"></i>${b.label}</span>`).join('');
+    const canvas = $('rb-chart');
+    canvas.addEventListener('pointermove', ev => showAt(ev.clientX));
+    canvas.addEventListener('pointerdown', ev => showAt(ev.clientX));
+    canvas.addEventListener('pointerleave', hideTip);
+    let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 150); });
+    await buildCoins();
+    renderCoins();
+    await select(COINS[0].short);
+    setInterval(async () => {
+      const before = COINS.map(c => c.short).join();
+      await buildCoins();
+      if (COINS.map(c => c.short).join() === before) return;
+      COINS.some(c => c.short === current) ? renderCoins() : select(COINS[0].short);
+    }, 15 * 60 * 1000);
+  }
+  function onCurrency() { const c = COINS.find(x => x.short === current); if (c && cache[current]) { summary(c); draw(); } }
+  return {start, onCurrency};
+})();
+
+/* ======================= Saisonnalité ======================= */
+views.saison = (() => {
+  const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
+  const monthly = {}; // 'YYYY-MM' -> last close of the month (USD)
+  let curYear = 0, curMonth = 0, curKey = '', livePrice = null, started = false, loaded = false;
+  const key = (y, m) => y + '-' + String(m + 1).padStart(2, '0');
+  const color = r => {
+    if (r === null || r === undefined || !Number.isFinite(r)) return '';
+    const a = (Math.min(1, Math.abs(r) / 30) * 0.6 + 0.07).toFixed(2);
+    return r >= 0 ? `background:rgba(44,245,163,${a})` : `background:rgba(255,92,124,${a})`;
+  };
+  const fmtR = r => (r >= 0 ? '+' : '−') + Math.abs(r).toFixed(1).replace('.', ',');
+  const median = c => { const s = [...c].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+  // A month's return needs the previous calendar month's close: gaps never produce a two-month return.
+  function returns() {
+    const out = {};
+    for (const k of Object.keys(monthly)) {
+      const y = +k.slice(0, 4), m = +k.slice(5) - 1, prev = m === 0 ? key(y - 1, 11) : key(y, m - 1);
+      if (monthly[prev] > 0) (out[y] ||= new Array(12).fill(null))[m] = (monthly[k] / monthly[prev] - 1) * 100;
+    }
+    return out;
+  }
+
+  function render() {
+    const rets = returns(), years = Object.keys(rets).map(Number).sort((a, b) => b - a);
+    let html = '<table><thead><tr><th>Année</th>' + MOIS.map(m => `<th>${m}</th>`).join('') + '</tr></thead><tbody>';
+    for (const y of years) {
+      html += `<tr><td>${y}</td>`;
+      for (let m = 0; m < 12; m++) {
+        const r = rets[y][m], now = y === curYear && m === curMonth;
+        html += r === null ? '<td style="color:var(--dim)">·</td>' : `<td${now ? ' class="now" title="Mois en cours, prix en direct"' : ''} style="${color(r)}">${fmtR(r)}</td>`;
+      }
+      html += '</tr>';
+    }
+    const cols = Array.from({length: 12}, () => []);
+    for (const y of years) for (let m = 0; m < 12; m++) if (!(y === curYear && m === curMonth) && rets[y][m] !== null) cols[m].push(rets[y][m]);
+    const rows = [
+      ['Moyenne', c => c.reduce((s, v) => s + v, 0) / c.length, v => fmtR(v) + ' %', true],
+      ['Médiane', median, v => fmtR(v) + ' %', true],
+      ['Mois positifs', c => c.filter(v => v > 0).length / c.length, (v, c) => c.filter(x => x > 0).length + '/' + c.length, false],
+    ];
+    for (const [label, f, fmt, tint] of rows) {
+      html += `<tr class="stats"><td>${label}</td>`;
+      for (let m = 0; m < 12; m++) {
+        if (!cols[m].length) { html += '<td>—</td>'; continue; }
+        const v = f(cols[m]);
+        html += `<td style="${tint ? color(v) : 'color:var(--' + (v >= 0.5 ? 'up' : 'down') + ')'}">${fmt(v, cols[m])}</td>`;
+      }
+      html += '</tr>';
+    }
+    $('ss-table').innerHTML = html + '</tbody></table>';
+    const cur = rets[curYear]?.[curMonth];
+    const best = cols.map((c, m) => ({m, v: c.length ? c.reduce((s, x) => s + x, 0) / c.length : -Infinity})).sort((a, b) => b.v - a.v)[0];
+    $('ss-summary').innerHTML =
+      `<span>Bitcoin ${livePrice ? '<span class="live">● EN DIRECT</span>' : ''}</span><strong>${livePrice ? Devises.fmtUsd(livePrice, 0) : '—'}</strong>` +
+      (cur !== null && cur !== undefined ? `<span>${MOIS[curMonth]} ${curYear} en cours : <strong style="color:var(--${cur >= 0 ? 'up' : 'down'})">${fmtR(cur)} %</strong></span>` : '') +
+      (best && Number.isFinite(best.v) ? `<span>Meilleur mois en moyenne : <strong>${MOIS[best.m]}</strong></span>` : '');
+  }
+
+  async function refreshLive() {
+    try {
+      const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+      if (!r.ok) return;
+      const price = parseFloat((await r.json()).price);
+      if (!(price > 0)) return;
+      livePrice = price; monthly[curKey] = price;
+      render();
+    } catch {}
+  }
+
+  async function start() {
+    if (started) return;
+    started = true;
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const res = await fetch(`https://coincodex.com/api/coincodex/get_coin_history/BTC/2013-12-01/${today}/5000`);
+      if (!res.ok) throw Error('HTTP ' + res.status);
+      const pts = ((await res.json()).BTC || []).map(p => ({t: new Date(p[0] * 1000), price: p[1]})).filter(p => p.price > 0).sort((a, b) => a.t - b.t);
+      if (pts.length < 100) throw Error('historique trop court');
+      for (const p of pts) monthly[key(p.t.getUTCFullYear(), p.t.getUTCMonth())] = p.price;
+      const now = new Date();
+      curYear = now.getUTCFullYear(); curMonth = now.getUTCMonth(); curKey = key(curYear, curMonth);
+      loaded = true;
+      render(); refreshLive(); setInterval(refreshLive, 60000);
+    } catch (e) {
+      $('ss-error').style.display = 'block';
+      $('ss-error').textContent = `Impossible de charger l’historique (${e.message}). Recharge la page dans une minute.`;
+      $('ss-summary').textContent = 'Données indisponibles';
+    }
+  }
+  return {start, onCurrency: () => { if (loaded) render(); }};
+})();
+
+/* ======================= switch ======================= */
+function show(name) {
+  for (const n of ['rainbow', 'saison']) {
+    $('view-' + n).hidden = n !== name;
+    $('tab-' + n).setAttribute('aria-selected', String(n === name));
+  }
+  history.replaceState(null, '', '#' + name);
+  views[name].start();
+}
+$('tab-rainbow').onclick = () => show('rainbow');
+$('tab-saison').onclick = () => show('saison');
+document.querySelector('.switch').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const next = $('tab-rainbow').getAttribute('aria-selected') === 'true' ? 'saison' : 'rainbow';
+  show(next); $('tab-' + next).focus();
+});
+Devises.init('#cur', () => { views.rainbow.onCurrency(); views.saison.onCurrency(); }).finally(() => show(location.hash === '#saison' ? 'saison' : 'rainbow'));
+</script>
+<script type="module" src="sidebar.js?v=20261004-w3"></script></body>
+</html>
