@@ -40,6 +40,16 @@
   .summary strong { color: var(--ink); font: 600 17px 'JetBrains Mono', monospace; letter-spacing: -.4px; }
   .live { color: var(--up); font-size: 11px; font-weight: 800; letter-spacing: .8px; }
   .note-chip { display: inline-block; font-size: 12px; color: #ffd994; background: rgba(255,200,97,.08); border: 1px solid rgba(255,200,97,.28); border-radius: 999px; padding: 3px 10px; }
+  .thermo { flex-basis: 100%; margin-top: 4px; }
+  .thermo-bar { position: relative; display: flex; height: 12px; border-radius: 6px; overflow: visible; }
+  .thermo-bar i { flex: 1; opacity: .9; }
+  .thermo-bar i:first-child { border-radius: 6px 0 0 6px; } .thermo-bar i:last-child { border-radius: 0 6px 6px 0; }
+  .thermo-bar b { position: absolute; top: -5px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; background: #f4f6ff; box-shadow: 0 0 0 2px #05060e, 0 0 12px rgba(244,246,255,.8); transition: left .6s; }
+  .thermo-ends { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; font-weight: 700; color: var(--muted); }
+  .profile svg { display: block; width: 100%; height: auto; }
+  .profile-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .profile-head h2 { margin: 0; font: 600 14px Unbounded, 'Segoe UI', sans-serif; }
+  .profile-head small { color: var(--muted); font-size: 12px; }
   .band-chip { display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #0a0718; }
   .coins { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
   .coins::-webkit-scrollbar { display: none; }
@@ -108,6 +118,7 @@
   <section id="view-saison" role="tabpanel" aria-labelledby="tab-saison" class="cy" hidden>
     <div class="error" id="ss-error"></div>
     <div class="card"><div class="summary" id="ss-summary">Chargement des rendements mensuels depuis 2014…</div></div>
+    <div class="card profile"><div class="profile-head"><h2>Profil moyen d’une année</h2><small>rendement moyen de chaque mois · <span id="ss-years"></span></small></div><div id="ss-profile"></div></div>
     <div class="card"><div class="swipe">Glisse le tableau pour voir toute l’année →</div><div class="table-wrap" id="ss-table"></div></div>
     <p class="warn">La saisonnalité décrit le passé, elle ne prédit pas l’avenir : environ 12 valeurs par mois, c’est statistiquement très peu, et les motifs connus de tous s’usent. Pas un conseil financier.</p>
     <details class="method"><summary>Comment c’est calculé</summary>
@@ -204,7 +215,7 @@ views.rainbow = (() => {
     // Nine equal bands; the rare extreme days (2 % on each side) may leave the rainbow, as on any Rainbow Chart.
     const edge = (t, i) => fit(t) + lo + i * step;
     const bandOf = (price, t) => Math.max(0, Math.min(BANDS.length - 1, Math.floor((Math.log(price) - fit(t) - lo) / step)));
-    return {fit, edge, bandOf, slope: b, years: (pts.at(-1).t - pts[0].t) / (365.25 * DAY)};
+    return {fit, edge, bandOf, lo, step, slope: b, years: (pts.at(-1).t - pts[0].t) / (365.25 * DAY)};
   }
 
   const lastPoint = e => e.live || e.pts.at(-1);
@@ -224,7 +235,13 @@ views.rainbow = (() => {
       `<span style="font-size:12px">${e.model.years.toFixed(1).replace('.', ',')} ans d’historique</span>` +
       (e.model.years < 4 ? '<span class="note-chip">Historique court : modèle peu fiable</span>' : '') +
       (e.dropped ? `<span class="note-chip" title="Prix de lancement aberrants, liquidité quasi nulle">${e.dropped} prix de lancement écarté(s)</span>` : '') +
-      (e.model.slope <= 0 ? '<span class="note-chip">Tendance de fond négative : le Rainbow ne s’applique pas à cette crypto</span>' : '');
+      (e.model.slope <= 0 ? '<span class="note-chip">Tendance de fond négative : le Rainbow ne s’applique pas à cette crypto</span>' : '') +
+      thermo(e, p);
+  }
+  // Where the price sits across the nine bands, from fire sale to bubble.
+  function thermo(e, p) {
+    const pos = Math.max(0, Math.min(1, (Math.log(p.price) - e.model.fit(p.t) - e.model.lo) / (e.model.step * BANDS.length)));
+    return `<div class="thermo" role="img" aria-label="Position du prix : ${Math.round(pos * 100)} % entre le bas et le haut de l’arc-en-ciel"><div class="thermo-bar">${BANDS.map(b => `<i style="background:${b.c}"></i>`).join('')}<b style="left:${(pos * 100).toFixed(1)}%"></b></div><div class="thermo-ends"><span>Bon marché</span><span>Bulle</span></div></div>`;
   }
 
   async function select(short) {
@@ -426,12 +443,29 @@ views.saison = (() => {
       html += '</tr>';
     }
     $('ss-table').innerHTML = html + '</tbody></table>';
+    profile(cols);
+    $('ss-years').textContent = years.length ? `${years.at(-1)} → ${years[0]}` : '';
     const cur = rets[curYear]?.[curMonth];
     const best = cols.map((c, m) => ({m, v: c.length ? c.reduce((s, x) => s + x, 0) / c.length : -Infinity})).sort((a, b) => b.v - a.v)[0];
     $('ss-summary').innerHTML =
       `<span>Bitcoin ${livePrice ? '<span class="live">● EN DIRECT</span>' : ''}</span><strong>${livePrice ? Devises.fmtUsd(livePrice, 0) : '—'}</strong>` +
       (cur !== null && cur !== undefined ? `<span>${MOIS[curMonth]} ${curYear} en cours : <strong style="color:var(--${cur >= 0 ? 'up' : 'down'})">${fmtR(cur)} %</strong></span>` : '') +
       (best && Number.isFinite(best.v) ? `<span>Meilleur mois en moyenne : <strong>${MOIS[best.m]}</strong></span>` : '');
+  }
+
+  // Diverging bars around 0 %: green above, red below; the current month is outlined.
+  function profile(cols) {
+    const avg = cols.map(c => c.length ? c.reduce((s, v) => s + v, 0) / c.length : 0);
+    const W = Math.max(320, $('ss-profile').clientWidth || 600), H = 190, T = 22, B = 26, L = 4, R = 4;
+    const up = Math.max(1, ...avg), dn = Math.max(1, ...avg.map(v => -v)), sc = (H - T - B) / (up + dn), mid = T + up * sc, slot = (W - L - R) / 12, bw = Math.min(34, slot * 0.62);
+    const bars = avg.map((v, i) => {
+      const x = L + i * slot + (slot - bw) / 2, h = Math.max(2, Math.abs(v) * sc), y = v >= 0 ? mid - h : mid;
+      const now = i === curMonth, c = v >= 0 ? '#2cf5a3' : '#ff5c7c', ly = v >= 0 ? y - 6 : y + h + 13;
+      return `<g><title>${MOIS[i]} : ${fmtR(v)} % en moyenne, ${cols[i].filter(x => x > 0).length}/${cols[i].length} années positives</title><rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="4" fill="${c}" fill-opacity="${now ? 1 : .75}" ${now ? 'stroke="#f4f6ff" stroke-width="2"' : ''}/>` +
+        (W >= 480 ? `<text x="${x + bw / 2}" y="${ly}" text-anchor="middle" font-size="10.5" fill="#c9cdf2" font-family="JetBrains Mono, monospace">${fmtR(v)}</text>` : '') +
+        `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="${now ? '#eef0ff' : '#8f95bd'}" font-weight="${now ? 800 : 600}">${MOIS[i].slice(0, W < 480 ? 1 : 4)}</text></g>`;
+    }).join('');
+    $('ss-profile').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rendement moyen du Bitcoin par mois"><line x1="${L}" x2="${W - R}" y1="${mid}" y2="${mid}" stroke="rgba(238,240,255,.25)"/>${bars}</svg>`;
   }
 
   async function refreshLive() {

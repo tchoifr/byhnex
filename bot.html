@@ -67,7 +67,14 @@
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
   .field input, .field select { min-height: 42px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5,6,14,.7); color: var(--ink); padding: 0 12px; font: 600 14px 'JetBrains Mono', monospace; width: 100%; box-sizing: border-box; }
+  .adv summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; font-size: 13px; font-weight: 800; color: var(--ink); }
+  .adv summary::-webkit-details-marker { display: none; }
+  .adv summary::after { content: '▾'; color: var(--muted); transition: transform .2s; }
+  .adv[open] summary::after { transform: rotate(180deg); }
+  .adv summary span { margin-left: auto; font-weight: 600; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .adv-body { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
   .hint { margin: 0; font-size: 12px; color: var(--dim); line-height: 1.5; }
+  .error:empty, .hint:empty { display: none; }
   .error { margin: 0; color: var(--down); font-size: 13px; font-weight: 700; }
   .results { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -135,6 +142,7 @@
     <form class="settings card" id="settings" novalidate>
       <div><p class="label">Crypto</p><div class="rail" id="assets"></div></div>
       <div><p class="label">Stratégie</p><div class="strats" id="strats"></div></div>
+      <details class="adv" id="adv" open><summary>Réglages avancés <span id="adv-sum"></span></summary><div class="adv-body">
       <div class="fields" id="params"></div>
       <div class="fields">
         <label class="field">Bougies<select id="interval"><option value="15m">15 minutes</option><option value="1h" selected>1 heure</option><option value="4h">4 heures</option><option value="1d">1 jour</option></select></label>
@@ -142,6 +150,7 @@
         <label class="field">Frais / ordre (%)<input id="fee" type="number" min="0" max="5" step="0.05" value="0.1" inputmode="decimal"></label>
       </div>
       <p class="hint" id="strat-hint"></p>
+      </div></details>
       <p class="error" id="error" role="alert"></p>
     </form>
 
@@ -211,12 +220,17 @@ function renderParams() {
   $('params').innerHTML = PARAMS[prefs.strategy].map(([k, label, step]) => `<label class="field">${label}<input type="number" data-param="${k}" step="${step}" value="${p[k]}" inputmode="decimal"></label>`).join('');
   $('strat-hint').textContent = STRATEGIES[prefs.strategy].label + '.';
 }
+function advSummary() {
+  const p = PARAMS[prefs.strategy].map(([k]) => $('params').querySelector(`[data-param="${k}"]`)?.value).join(' / ');
+  $('adv-sum').textContent = `${p} · ${$('interval').value} · ${Number($('capital').value).toLocaleString('fr-FR')} $`;
+}
 function config() {
   const params = {};
   for (const input of $('params').querySelectorAll('[data-param]')) params[input.dataset.param] = Number(input.value);
   return {strategy: prefs.strategy, params, capital: Number($('capital').value), fee: Number($('fee').value)};
 }
 function saveForm() {
+  advSummary();
   const cfg = config();
   prefs = {...prefs, interval: $('interval').value, capital: cfg.capital, fee: cfg.fee, params: {...prefs.params, [prefs.strategy]: cfg.params}};
   write(PREF_KEY, prefs);
@@ -394,6 +408,8 @@ function renderEquity(eq) {
 
 /* ---------- events ---------- */
 renderSettings();
+advSummary();
+if (matchMedia('(max-width: 760px)').matches) $('adv').open = false;
 $('settings').addEventListener('change', e => {
   if (e.target.name === 'asset') prefs.asset = e.target.value;
   if (e.target.name === 'strategy') { saveForm(); prefs.strategy = e.target.value; renderParams(); }
