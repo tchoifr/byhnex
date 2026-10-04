@@ -1,11 +1,11 @@
 # Byhnex — cours réels, portefeuille virtuel
 
-Site statique : accueil avec boîte à outils, recherche et favoris ; sept outils dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
+Site statique : accueil avec boîte à outils, recherche et favoris ; cinq outils dans le menu (Dashboard Marché et Backtest retirés du menu, pages toujours accessibles par leur adresse) dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
 
 ## Démarrer et vérifier
 - `npm.cmd start` : http://localhost:5173
 - `npm.cmd test` : calculs après frais, agrégation OHLC, ticks, prix manquants, réponse réseau tardive, conversion valeur/quantité et réserve.
-- `npm.cmd run build` : export statique des 26 ressources publiques vers `dist`, liens relatifs contrôlés pour GitHub Pages.
+- `npm.cmd run build` : export statique des 31 ressources publiques (dont manifest, robots.txt et sitemap.xml) vers `dist`, liens relatifs contrôlés pour GitHub Pages.
 - `browser-portfolio-check.mjs` : cours réels, valeurs éditables, capital/réserve, cartes, mobile (Chrome DevTools sur localhost:9224).
 - `browser-tools-check.mjs` : vérification des six outils existants avec les données réelles.
 
