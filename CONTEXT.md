@@ -73,10 +73,9 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   future. Metriques : capital final, ecart avec l'immobilisme, nombre d'operations,
   taux de reussite, pire recul des deux approches, frais payes. Courbe en echelle
   logarithmique. Pagination des bougies par lots de 1000 (jusqu'a 3000).
-- `positionnement.html` : contrats perpetuels Binance Futures pour le meme top 20 :
-  funding rate (8 h et annualise), open interest et sa variation 24 h, ratio
-  long/short des comptes, lecture croisee prix/OI. Refresh 5 min.
-  Gere les contrats cotes par lots (SHIB = `1000SHIBUSDT`, prix ramene a l'unite).
+- `positionnement.html` : redirection vers `signaux-crypto.html`, qui integre desormais
+  les colonnes funding annualise, OI 24h, % de comptes acheteurs et lecture prix/OI
+  (Binance Futures, refresh 5 min, contrats cotes par lots geres : `1000SHIBUSDT`).
 - `saisonnalite-btc.html` : rendements mensuels BTC depuis 2014 en heatmap,
   mois en cours calcule au prix live.
 - `devises.js` : module partage par les pages. Taux quotidiens depuis l'euro

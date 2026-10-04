@@ -6,15 +6,15 @@
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>Signaux Crypto — Byhnex</title>
-<meta name="description" content="Signaux crypto en direct : RSI 14, tendance 50/200 et zones d’achat ou de vente sur le top 20, avec alertes navigateur.">
+<title>Signaux & positionnement — Byhnex</title>
+<meta name="description" content="Signaux crypto en direct sur le top 20 : RSI 14, tendance 50/200, zones d’achat ou de vente, funding, open interest et ratio long/short Binance Futures.">
 <meta name="theme-color" content="#0b0e17">
 <link rel="canonical" href="https://osvalt16.github.io/byhnex/signaux-crypto.html">
 <link rel="manifest" href="manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Byhnex">
-<meta property="og:title" content="Signaux Crypto — Byhnex">
-<meta property="og:description" content="Signaux crypto en direct : RSI 14, tendance 50/200 et zones d’achat ou de vente sur le top 20, avec alertes navigateur.">
+<meta property="og:title" content="Signaux &amp; positionnement — Byhnex">
+<meta property="og:description" content="Signaux crypto en direct sur le top 20 : RSI 14, tendance 50/200, zones d’achat ou de vente, funding, open interest et ratio long/short Binance Futures.">
 <meta property="og:url" content="https://osvalt16.github.io/byhnex/signaux-crypto.html">
 <meta property="og:image" content="https://osvalt16.github.io/byhnex/icon-512.png">
 <meta name="twitter:card" content="summary">
@@ -94,7 +94,13 @@
     overflow-x: auto; margin-bottom: 20px;
     -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   }
-  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table { width: 100%; border-collapse: collapse; min-width: 980px; }
+  .fund-chip { padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .bar { height: 5px; border-radius: 3px; background: rgba(255,95,118,0.35); overflow: hidden; width: 64px; margin: 4px 0 0 auto; }
+  .bar > i { display: block; height: 100%; background: var(--green); }
+  .lecture { font-size: 12px; white-space: nowrap; cursor: help; }
+  th.group { border-left: 1px solid var(--border); }
+  td.group { border-left: 1px solid rgba(96,140,255,0.08); }
   th { text-align: right; padding: 13px 12px; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.4px; border-bottom: 1px solid var(--border); }
   th:first-child { text-align: left; padding-left: 18px; }
   td { padding: 13px 12px; text-align: right; font-size: 14px; border-bottom: 1px solid rgba(96,140,255,0.08); }
@@ -158,7 +164,7 @@
     .strategy-bar { font-size: 12px; padding: 10px 12px; }
     table { min-width: 0; }
     th, td { padding: 10px 7px; font-size: 12.5px; }
-    th:nth-child(3), td:nth-child(3), th:nth-child(5), td:nth-child(5) { display: none; }
+    .hide-mobile { display: none; }
     .log-entry { font-size: 12px; padding: 8px 12px; }
   }
 </style>
@@ -169,7 +175,7 @@
   <header>
     <div class="brand">
       <img src="logo.png" alt="">
-      <h1>Signaux Crypto</h1>
+      <h1>Signaux & positionnement</h1>
     </div>
     <div class="status"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div>
   </header>
@@ -181,10 +187,12 @@
 
   <div class="strategy-bar" id="market-bar">🧭 Analyse marché Bitcoin : chargement…</div>
 
+  <div class="strategy-bar" id="futures-bar">⚖️ Positionnement Binance Futures : chargement…</div>
+
   <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Crypto</th><th>Prix (temps réel)<select class="cur" id="cur" title="Changer de devise"></select></th><th>24h</th><th>RSI</th><th>Tendance</th></tr>
+      <tr><th>Crypto</th><th>Prix (temps réel)<select class="cur" id="cur" title="Changer de devise"></select></th><th class="hide-mobile">24h</th><th>RSI</th><th class="hide-mobile">Tendance</th><th class="group" title="Funding des contrats perpétuels, annualisé">Funding /an</th><th class="hide-mobile" title="Variation de l'open interest sur 24 h">OI 24h</th><th class="hide-mobile" title="Part des comptes positionnés à l'achat">Acheteurs</th><th class="hide-mobile">Lecture prix / OI</th></tr>
     </thead>
     <tbody id="tbody"></tbody>
   </table>
@@ -192,7 +200,9 @@
 
   <div class="warn">
     ⚠️ Les signaux et alertes sont des <strong>informations, pas des recommandations</strong> : un RSI en zone
-    ne garantit ni un rebond ni un repli. La décision et la responsabilité restent les tiennes.
+    ne garantit ni un rebond ni un repli. Le funding, l'open interest et le ratio long/short décrivent le
+    <strong>positionnement des traders à effet de levier</strong> : des indicateurs de fragilité, jamais des signaux
+    d'achat ou de vente. La décision et la responsabilité restent les tiennes.
     Ceci n'est pas un conseil financier.
   </div>
 
@@ -205,14 +215,18 @@
       💱 Devise : le sélecteur en haut de la colonne Prix convertit l'affichage dans 160 devises (taux quotidiens). Le RSI et la tendance ne changent pas : ils ne dépendent pas de la devise.<br>
       🧭 Colonne Tendance : direction de fond de chaque crypto (moyennes 50/200 sur bougies 15 min). Un ⚠️ s'affiche quand le RSI contredit la tendance — RSI rouge + ↗ peut continuer de monter, RSI vert + ↘ peut continuer de chuter.<br>
       🔔 Alertes ON : notification, bip et titre clignotant quand une crypto entre en zone d'achat ou de vente (page ouverte requise).<br>
-      📲 Les alertes push sur ton téléphone, elles, fonctionnent même page fermée : elles viennent du robot qui tourne sur GitHub.
+      📲 Les alertes push sur ton téléphone, elles, fonctionnent même page fermée : elles viennent du robot qui tourne sur GitHub.<br><br>
+      ⚖️ <strong>Funding /an</strong> : loyer payé toutes les 8 h entre acheteurs et vendeurs à effet de levier (taux 8 h × 3 × 365). Au-dessus de 30 %/an, les acheteurs sont encombrés et exposés aux liquidations en cascade ; nettement négatif, ce sont les vendeurs (terrain d'un <em>short squeeze</em>).<br>
+      📊 <strong>OI 24h</strong> : variation du montant total des positions ouvertes. <strong>Lecture prix / OI</strong> : prix ↗ + OI ↗ = argent frais à l'achat ; prix ↗ + OI ↘ = rachats de vendeurs ; prix ↘ + OI ↗ = nouveaux vendeurs ; prix ↘ + OI ↘ = purge du levier.<br>
+      👥 <strong>Acheteurs</strong> : part des comptes à l'achat (barre verte). Quand une écrasante majorité est du même côté, beaucoup lisent le signal à contre-courant.<br>
+      🔄 Données Binance Futures (contrats perpétuels USDT), actualisées toutes les 5 min. Ces mesures disent où est le risque, pas où va le prix.
     </p>
     </details>
   </div>
 </div>
 
 </main>
-<script src="devises.js"></script>
+<script src="network.js?v=20261003-ovh"></script><script src="devises.js"></script>
 <script>
 'use strict';
 let COINS = [];
@@ -234,6 +248,7 @@ const BUY_BELOW = 30, SELL_ABOVE = 70;
 const INTERVAL = '15m';
 
 const live = {};
+const fut = {};
 const rsiNow = {};
 const trendNow = {};
 
@@ -405,12 +420,12 @@ async function updateMarket() {
     const f = n => (n >= 0 ? '+' : '') + n.toFixed(1) + ' %';
     const fp = n => Devises.fmt(n, 0);
     const vs200 = ((price - ma200) / ma200 * 100);
-    document.getElementById('market-bar').innerHTML =
+    document.getElementById('market-bar').innerHTML = '<span>' +
       '🧭 <strong style="color:var(--text)">Marché Bitcoin :</strong> <strong class="' + cls + '">' + regime + '</strong>' +
       ' · 7 j : <span class="' + (p7 >= 0 ? 'up' : 'down') + '">' + f(p7) + '</span>' +
       ' · 30 j : <span class="' + (p30 >= 0 ? 'up' : 'down') + '">' + f(p30) + '</span>' +
       ' · prix ' + (vs200 >= 0 ? 'au-dessus' : 'en dessous') + ' de sa moyenne 200 j (' + fp(ma200) + ', ' + f(vs200) + ')' +
-      ' <span style="color:var(--muted)">— basé sur les moyennes 50/200 jours, mis à jour toutes les 15 min. Info, pas prédiction.</span>';
+      ' <span style="color:var(--muted)">— basé sur les moyennes 50/200 jours, mis à jour toutes les 15 min. Info, pas prédiction.</span></span>';
   } catch(e) { console.warn(e); }
 }
 
@@ -457,6 +472,91 @@ function connectWS() {
 }
 
 const fmt = (n, d) => Devises.fmt(n, d);
+const pct = (v, d) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d ?? 1) + ' %';
+
+function fundingHtml(annual) {
+  let bg, fg, txt;
+  if (annual > 30) { bg = 'rgba(255,95,118,0.14)'; fg = 'var(--red)'; txt = 'acheteurs encombrés'; }
+  else if (annual > 10) { bg = 'rgba(230,185,92,0.12)'; fg = 'var(--gold)'; txt = 'acheteurs dominants'; }
+  else if (annual < -10) { bg = 'rgba(43,227,164,0.14)'; fg = 'var(--green)'; txt = 'vendeurs encombrés'; }
+  else { bg = 'rgba(131,145,173,0.1)'; fg = 'var(--muted)'; txt = 'équilibré'; }
+  return '<span class="fund-chip" style="background:' + bg + ';color:' + fg + '" title="' + txt + '">' + pct(annual) + '</span>';
+}
+
+function lectureHtml(dPrice, dOi) {
+  if (dPrice === null || dOi === null) return '<span style="color:var(--muted)">—</span>';
+  if (Math.abs(dPrice) < 0.5 && Math.abs(dOi) < 1) return '<span style="color:var(--muted)" title="Prix et open interest stables">calme</span>';
+  if (dPrice >= 0 && dOi >= 0) return '<span class="up" title="Hausse alimentée par le levier">argent frais à l\'achat</span>';
+  if (dPrice >= 0) return '<span style="color:var(--gold)" title="Hausse peu soutenue : des vendeurs se rachètent">rachats de vendeurs</span>';
+  if (dOi >= 0) return '<span class="down" title="Pression baissière assumée">nouveaux vendeurs</span>';
+  return '<span style="color:var(--gold)" title="Positions fermées, souvent après liquidations">purge du levier</span>';
+}
+
+function futuresCells(coin) {
+  const f = fut[coin.short];
+  if (f === undefined) return '<td class="group" style="color:var(--muted)">…</td><td class="hide-mobile">…</td><td class="hide-mobile">…</td><td class="hide-mobile">…</td>';
+  if (f === null) return '<td class="group" colspan="4" style="color:var(--muted);font-size:12px">pas de contrat à terme</td>';
+  const lsPct = f.long === null ? null : f.long * 100;
+  return '<td class="group">' + fundingHtml(f.annual) + '</td>' +
+    '<td class="hide-mobile ' + (f.oiChg === null ? '' : f.oiChg >= 0 ? 'up' : 'down') + '">' + (f.oiChg === null ? '—' : pct(f.oiChg)) + '</td>' +
+    '<td class="hide-mobile">' + (lsPct === null ? '—' : lsPct.toFixed(0) + ' %<div class="bar"><i style="width:' + lsPct.toFixed(0) + '%"></i></div>') + '</td>' +
+    '<td class="hide-mobile lecture">' + lectureHtml(f.dPrice, f.oiChg) + '</td>';
+}
+
+// Binance cote les cryptos a tres bas prix par lots : SHIB devient 1000SHIBUSDT.
+// Funding, open interest en dollars et ratio long/short restent valides tels quels.
+function futuresSymbol(short, pMap) {
+  for (const p of ['', '1000', '1000000']) if (pMap[p + short + 'USDT']) return p + short + 'USDT';
+  return null;
+}
+
+async function refreshFutures() {
+  try {
+    const [prem, tick] = await Promise.all([
+      fetch('https://fapi.binance.com/fapi/v1/premiumIndex').then(r => r.json()),
+      fetch('https://fapi.binance.com/fapi/v1/ticker/24hr').then(r => r.json()),
+    ]);
+    const pMap = Object.fromEntries(prem.map(x => [x.symbol, x]));
+    const tMap = Object.fromEntries(tick.map(x => [x.symbol, x]));
+    await Promise.all(COINS.map(async c => {
+      const sym = futuresSymbol(c.short, pMap);
+      if (!sym) { fut[c.short] = null; return; }
+      let oi = null, oiChg = null, long = null;
+      try {
+        const h = await fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=' + sym + '&period=1h&limit=25').then(r => r.json());
+        if (Array.isArray(h) && h.length) {
+          oi = parseFloat(h[h.length - 1].sumOpenInterestValue);
+          const old = parseFloat(h[0].sumOpenInterestValue);
+          if (old > 0) oiChg = (oi / old - 1) * 100;
+        }
+      } catch (e) {}
+      try {
+        const r = await fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=' + sym + '&period=1h&limit=1').then(r => r.json());
+        if (Array.isArray(r) && r.length) long = parseFloat(r[0].longAccount);
+      } catch (e) {}
+      const fr = parseFloat(pMap[sym].lastFundingRate), t = tMap[sym];
+      fut[c.short] = { annual: fr * 3 * 365 * 100, dPrice: t ? parseFloat(t.priceChangePercent) : null, oi, oiChg, long, nextFunding: parseFloat(pMap[sym].nextFundingTime) };
+    }));
+    const rows = COINS.map(c => fut[c.short]).filter(Boolean);
+    const moy = rows.length ? rows.reduce((s, r) => s + r.annual, 0) / rows.length : 0;
+    const totalOi = rows.reduce((s, r) => s + (r.oi || 0), 0);
+    const next = rows.find(r => r.nextFunding);
+    const mins = next ? Math.max(0, Math.round((next.nextFunding - Date.now()) / 60000)) : null;
+    const regime = moy > 25 ? '<span class="down">marché majoritairement à l\'achat avec levier</span>'
+      : moy < -5 ? '<span class="up">marché majoritairement à la vente</span>'
+      : 'positionnement globalement équilibré';
+    document.getElementById('futures-bar').innerHTML = '<span>' +
+      '⚖️ <strong style="color:var(--text)">Positionnement :</strong> funding moyen <strong style="color:var(--text)">' + pct(moy) + '/an</strong> · ' + regime +
+      ' · open interest cumulé <strong style="color:var(--text)">' + Devises.fmtBigUsd(totalOi) + '</strong>' +
+      (mins !== null ? ' · prochain règlement dans ' + Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : '') +
+      ' <span>— Binance Futures, maj ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '</span></span>';
+  } catch (e) {
+    console.warn(e);
+    for (const c of COINS) if (fut[c.short] === undefined) fut[c.short] = null;
+    document.getElementById('futures-bar').textContent = '⚖️ Données Binance Futures indisponibles. Nouvelle tentative dans 5 minutes.';
+  }
+  render();
+}
 
 function trendHtml(t) {
   if (t === 'up') return '<span class="up" style="font-size:18px" title="Prix et moyenne 50 au-dessus de la moyenne 200 (bougies 15 min)">↗</span>';
@@ -475,9 +575,9 @@ function render() {
     tr.innerHTML = `
       <td><strong>${coin.name}</strong> <span style="color:var(--muted);font-size:12px">${coin.short}</span></td>
       <td class="price"><strong>${l ? fmt(l.price) : '—'}</strong></td>
-      <td class="p24">${l && l.pct24h !== null ? `<span class="${l.pct24h >= 0 ? 'up' : 'down'}">${l.pct24h >= 0 ? '▲' : '▼'} ${Math.abs(l.pct24h).toFixed(2)} %</span>` : '—'}</td>
+      <td class="p24 hide-mobile">${l && l.pct24h !== null ? `<span class="${l.pct24h >= 0 ? 'up' : 'down'}">${l.pct24h >= 0 ? '▲' : '▼'} ${Math.abs(l.pct24h).toFixed(2)} %</span>` : '—'}</td>
       <td>${rsi !== null && rsi !== undefined ? '<span class="' + (rsi < BUY_BELOW ? 'rsi-buy' : rsi > SELL_ABOVE ? 'rsi-sell' : '') + '">' + rsi.toFixed(1) + '</span>' : '—'}</td>
-      <td>${trendHtml(trendNow[coin.sym])}</td>`;
+      <td class="hide-mobile">${trendHtml(trendNow[coin.sym])}</td>${futuresCells(coin)}`;
     tbody.appendChild(tr);
   }
 }
@@ -514,6 +614,7 @@ async function refreshUniverse() {
     if (ws) { try { ws.close(); } catch(e) {} }
     seedTickers();
     processNewCandles(false);
+    refreshFutures();
     render();
   }
 }
@@ -537,6 +638,8 @@ async function refreshUniverse() {
   setInterval(refreshUniverse, 15 * 60 * 1000);
   updateMarket();
   setInterval(updateMarket, 15 * 60 * 1000);
+  refreshFutures();
+  setInterval(refreshFutures, 5 * 60 * 1000);
 })();
 </script>
 <script type="module" src="sidebar.js?v=20261003-no-ai"></script>
