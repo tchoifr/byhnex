@@ -1,6 +1,6 @@
 # Byhnex — cours réels, portefeuille virtuel
 
-Site statique : accueil avec boîte à outils, recherche et favoris ; cinq outils dans le menu (Dashboard Marché et Backtest retirés du menu, pages toujours accessibles par leur adresse) dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
+Site statique : accueil avec boîte à outils, recherche et favoris ; quatre outils dans le menu (Dashboard Marché et Backtest retirés du menu ; Positionnement fusionné dans Signaux) dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
 
 ## Démarrer et vérifier
 - `npm.cmd start` : http://localhost:5173
@@ -20,7 +20,7 @@ Les niveaux de strat?gie sont masqu?s par d?faut et activables via Strat?gie. Fi
 - Graphique SOL/BTC/DOGE/ZEC : Coinbase USD, historique REST et ticks WebSocket ; secours Binance USDT avec libellé explicite et valorisation indicative du portefeuille (USDT assimilé au dollar). Contrôle de fraîcheur, reconnexion, bouton Réessayer et rafraîchissement REST toutes les 30 s. Les bougies 30 m/4 h/1 W Coinbase sont agrégées à partir des unités disponibles. Aucune bougie artificielle ne remplit les trous.
 - Tableau top 20 : CoinGecko, actualisation 60 s.
 - Signaux RSI et prix Rainbow : Binance WebSocket ; RSI sur bougies clôturées.
-- Positionnement : Binance Futures, actualisation 5 min.
+- Signaux & positionnement : un seul tableau RSI/tendance (Binance WebSocket) + funding, open interest et ratio long/short (Binance Futures, actualisation 5 min).
 - Saisonnalité/Rainbow/backtest : historiques réels (CoinCodex/Binance) ; ce sont des analyses historiques, pas des ordres de marché.
 - Accueil : prix SOL/BTC par sa propre connexion ; capitalisation et dominance CoinGecko à intervalle 5 min ; indice Bitcoin quotidien attribué à Alternative.me.
 - Devises : taux réels open.er-api, cache daté de moins de 48 h en secours. Aucun taux EUR/USD inventé n’est utilisé si le fournisseur et le cache sont indisponibles.
