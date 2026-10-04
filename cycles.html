@@ -100,7 +100,7 @@
     </div>
     <p class="warn">Le Rainbow Chart est un repère visuel, pas un modèle scientifique : une tendance logarithmique colorée qui paraît sage une fois le passé connu. Il se recalcule avec chaque nouveau prix et une crypto peut sortir de l’arc-en-ciel dans les deux sens. Pas un conseil financier.</p>
     <details class="method"><summary>Comment c’est calculé</summary>
-      Historique quotidien depuis les origines de chaque crypto (CoinCodex) et prix en direct (Binance). On ajuste ln(prix) = a + b·ln(jours depuis la naissance), avec le bloc genesis du 3 janvier 2009 pour le Bitcoin et le premier cours connu moins 180 jours pour les autres. Les 9 bandes ont la même largeur et couvrent l’écart à la tendance entre les 2 % de jours les plus bas et les 2 % les plus hauts ; les excès extrêmes restent dans les bandes du bas et du haut. Les bandes sont prolongées de 18 mois.
+      Historique quotidien depuis les origines de chaque crypto (CoinCodex) et prix en direct (Binance). On ajuste ln(prix) = a + b·ln(jours depuis la naissance), avec le bloc genesis du 3 janvier 2009 pour le Bitcoin et le premier cours connu moins 180 jours pour les autres. Les 9 bandes ont la même largeur et couvrent l’écart à la tendance entre les 2 % de jours les plus bas et les 2 % les plus hauts : lors des excès extrêmes, le prix sort de l’arc-en-ciel et compte dans la bande du bas ou du haut. Les bandes sont prolongées de 18 mois.
     </details>
   </section>
 
@@ -201,9 +201,8 @@ views.rainbow = (() => {
     const fit = t => a + b * lx(t);
     const res = Y.map((y, i) => y - fit(pts[i].t)).sort((p, q) => p - q);
     const lo = quantile(res, 0.02), hi = quantile(res, 0.98), step = (hi - lo) / BANDS.length;
-    const rmin = Math.min(res[0], lo) - step * 0.15, rmax = Math.max(res.at(-1), hi) + step * 0.15;
-    // Outer edges stretch to cover the extremes; inner edges stay evenly spaced.
-    const edge = (t, i) => fit(t) + (i === 0 ? rmin : i === BANDS.length ? rmax : lo + i * step);
+    // Nine equal bands; the rare extreme days (2 % on each side) may leave the rainbow, as on any Rainbow Chart.
+    const edge = (t, i) => fit(t) + lo + i * step;
     const bandOf = (price, t) => Math.max(0, Math.min(BANDS.length - 1, Math.floor((Math.log(price) - fit(t) - lo) / step)));
     return {fit, edge, bandOf, slope: b, years: (pts.at(-1).t - pts[0].t) / (365.25 * DAY)};
   }
@@ -285,11 +284,15 @@ views.rainbow = (() => {
     const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const pts = e.live ? [...e.pts, e.live] : e.pts, edge = e.model.edge, cur = lastPoint(e);
     const curBand = e.model.bandOf(cur.price, cur.t), k = Math.log(Devises.convUsd(1));
-    const t0 = pts[0].t, t1 = Date.now() + 548 * DAY, ML = 8, MR = 66, MT = 10, MB = 26;
+    const t0 = pts[0].t, t1 = Date.now() + 548 * DAY, ML = 8, MT = 10, MB = 26;
     let lo = Infinity, hi = -Infinity;
     for (const t of [t0, t1]) { lo = Math.min(lo, edge(t, 0)); hi = Math.max(hi, edge(t, BANDS.length)); }
-    for (const p of pts) { const l = Math.log(p.price); lo = Math.min(lo, l); hi = Math.max(hi, l); }
+    // Frame on the rainbow and on prices after the first 3 % of history, so launch days don't squash the chart.
+    const skip = t0 + (pts.at(-1).t - t0) * 0.03;
+    for (const p of pts) { if (p.t < skip) continue; const l = Math.log(p.price); lo = Math.min(lo, l); hi = Math.max(hi, l); }
     const pad = (hi - lo) * 0.03; lo -= pad; hi += pad;
+    ctx.font = '11px Manrope, "Segoe UI", sans-serif';
+    const ticks = priceTicks(lo + k, hi + k), MR = 14 + Math.max(40, ...ticks.map(v => ctx.measureText(tickLabel(v)).width));
     const xs = t => ML + (t - t0) / (t1 - t0) * (W - ML - MR), ys = l => MT + (hi - l) / (hi - lo) * (H - MT - MB);
     view = {t0, t1, ML, MR, W, H, MT, MB, xs, ys, pts};
     ctx.clearRect(0, 0, W, H);
@@ -302,7 +305,7 @@ views.rainbow = (() => {
     }
     ctx.globalAlpha = 1;
     ctx.font = '11px Manrope, "Segoe UI", sans-serif'; ctx.fillStyle = '#8f95bd'; ctx.strokeStyle = 'rgba(238,240,255,.12)'; ctx.lineWidth = 1;
-    for (const v of priceTicks(lo + k, hi + k)) {
+    for (const v of ticks) {
       const y = ys(Math.log(v) - k);
       if (y < MT + 6 || y > H - MB - 2) continue;
       ctx.beginPath(); ctx.moveTo(ML, y); ctx.lineTo(W - MR, y); ctx.stroke();
@@ -316,9 +319,10 @@ views.rainbow = (() => {
     const nowX = xs(Date.now());
     ctx.strokeStyle = 'rgba(238,240,255,.3)'; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(nowX, MT); ctx.lineTo(nowX, H - MB); ctx.stroke(); ctx.setLineDash([]);
+    ctx.save(); ctx.beginPath(); ctx.rect(ML, MT, W - ML - MR, H - MT - MB); ctx.clip();
     ctx.beginPath();
     pts.forEach((p, i) => { const x = xs(p.t), y = ys(Math.log(p.price)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.strokeStyle = '#f4f6ff'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(5,6,14,.9)'; ctx.shadowBlur = 4; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#f4f6ff'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(5,6,14,.9)'; ctx.shadowBlur = 4; ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
     ctx.beginPath(); ctx.arc(xs(cur.t), ys(Math.log(cur.price)), 4.5, 0, 7); ctx.fillStyle = '#f4f6ff'; ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = '#05060e'; ctx.stroke();
     if (hover) {
