@@ -8,8 +8,6 @@
 import {readSettings, startBot, tickBot, nextDue, parseKlines} from './bot-core.js';
 
 const ORIGINS = ['https://osvalt16.github.io', 'http://localhost:5173'];
-// Binance market-data mirror first (meant for data, open to cloud servers), main API as a fallback.
-const HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
 const LIMIT = 300, RETRY = 5 * 60000, SOON = 60000;
 // Binance answers 451 to some countries (the US among them): bots live in Western Europe, where it is open.
 const PLACE = {locationHint: 'weur'};
@@ -42,21 +40,51 @@ async function whoIs(request, env) {
   return id ? {id, name: users[id].name} : null;
 }
 
-async function klines(symbol, interval, limit) {
+// Price sources, tried in order. Binance refuses Cloudflare's servers (403/451), so OKX (same USDT pairs and
+// UTC candles) and Coinbase take over. Every source is turned into Binance-style rows
+// [openTime, open, high, low, close, volume, closeTime] so the bot state never depends on which one answered.
+const STEPS = {'15m': 9e5, '1h': 36e5, '4h': 144e5, '1d': 864e5};
+const UA = {'User-Agent': 'byhnex-bot (virtual trading, no orders)'};
+async function getJson(url) {
+  const r = await fetch(url, {headers: UA});
+  if (!r.ok) throw Error(`HTTP ${r.status}`);
+  return r.json();
+}
+const binance = host => async (asset, interval, limit) => {
+  const rows = await getJson(`${host}/api/v3/klines?symbol=${asset}USDT&interval=${interval}&limit=${limit}`);
+  if (!Array.isArray(rows) || !rows.length) throw Error('vide');
+  return rows;
+};
+export const SOURCES = [
+  {name: 'Binance', get: binance('https://data-api.binance.vision')},
+  {name: 'Binance (API)', get: binance('https://api.binance.com')},
+  {name: 'OKX', async get(asset, interval, limit) {
+    const bar = {'15m': '15m', '1h': '1H', '4h': '4H', '1d': '1Dutc'}[interval], step = STEPS[interval];
+    const j = await getJson(`https://www.okx.com/api/v5/market/candles?instId=${asset}-USDT&bar=${bar}&limit=${Math.min(limit, 300)}`);
+    if (j.code !== '0' || !Array.isArray(j.data) || !j.data.length) throw Error(j.msg || 'vide');
+    // Newest first; the unfinished candle gets a close time in the future and is dropped like Binance's.
+    return j.data.map(k => [+k[0], k[1], k[2], k[3], k[4], k[5], +k[0] + step - 1]).reverse();
+  }},
+  {name: 'Coinbase', async get(asset, interval) {
+    const g = {'15m': 900, '1h': 3600, '1d': 86400}[interval];
+    if (!g) throw Error('pas de bougies ' + interval);
+    const j = await getJson(`https://api.exchange.coinbase.com/products/${asset}-USD/candles?granularity=${g}`);
+    if (!Array.isArray(j) || !j.length) throw Error('vide');
+    return j.map(k => [k[0] * 1000, String(k[3]), String(k[2]), String(k[1]), String(k[4]), String(k[5]), k[0] * 1000 + g * 1000 - 1]).reverse();
+  }},
+];
+async function klines(asset, interval, limit) {
   const errors = [];
-  for (const host of HOSTS) {
-    try {
-      const r = await fetch(`${host}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
-      if (r.ok) return await r.json();
-      errors.push(`${host} HTTP ${r.status}`);
-    } catch (e) { errors.push(`${host} ${e.message}`); }
+  for (const src of SOURCES) {
+    try { return {rows: await src.get(asset, interval, limit), source: src.name}; }
+    catch (e) { errors.push(`${src.name} ${e.message}`); }
   }
   throw Error(errors.join(' ; '));
 }
 async function fetchMarket(assets, interval, now) {
   const market = {};
   await Promise.all(assets.map(async a => {
-    try { market[a] = parseKlines(await klines(a + 'USDT', interval, LIMIT), now); }
+    try { const {rows, source} = await klines(a, interval, LIMIT); market[a] = {...parseKlines(rows, now), source}; }
     catch (e) { console.log(`${a} indisponible : ${e.message}`); }
   }));
   return market;
@@ -98,7 +126,7 @@ export class BotRoom {
 
   async fetch(request) {
     const url = new URL(request.url), user = request.headers.get('X-User'), now = clock.now();
-    if (url.pathname === '/health') return json(await binanceCheck());
+    if (url.pathname === '/health') return json(await pricesCheck());
     const bot = await this.load(user);
     if (url.pathname === '/me') return json({bot});
     if (url.pathname === '/start') {
@@ -125,13 +153,13 @@ export class BotRoom {
   }
 }
 
-// Tested from inside a Durable Object placed like the bots, so it sees what they will see.
-async function binanceCheck() {
-  try { const k = await klines('BTCUSDT', '1h', 2); return {ok: true, binance: Array.isArray(k) && k.length > 0, btc: +k.at(-1)[4]}; }
-  catch (e) { return {ok: true, binance: false, error: e.message}; }
+// Price sources tested from inside a Durable Object placed like the bots, so it sees what they will see.
+async function pricesCheck() {
+  try { const {rows, source} = await klines('BTC', '1h', 5); return {ok: true, prices: true, source, btc: +rows.at(-1)[4]}; }
+  catch (e) { return {ok: true, prices: false, error: e.message}; }
 }
 async function health(url, env) {
-  if (!url.searchParams.has('binance')) return {ok: true};
+  if (!url.searchParams.has('prices') && !url.searchParams.has('binance')) return {ok: true};
   return (await room(env, 'health-check').fetch(new Request('https://room/health'))).json();
 }
 

@@ -5,12 +5,18 @@ import worker, {BotRoom, codeHash, clock as workerClock} from './byhnex-bot.js';
 const H = 36e5, CODE = 'ABCD-EFGH-JKMN-PQRS', CODE2 = 'ZZZZ-YYYY-XXXX-WWWW';
 let clock = 1000 * H + 30 * 6e4, binanceDown = false, fetched = [];
 workerClock.now = () => clock;
+// Fake markets: Binance-style rows, also served the way OKX and Coinbase shape them. `blocked` lists refused hosts.
+let blocked = [];
+const price = t => 100 + 20 * Math.sin(t / H / 5);
 globalThis.fetch = async url => {
   fetched.push(String(url));
-  if (binanceDown) return new Response('{}', {status: 451});
-  const u = new URL(url), step = H, end = Math.floor(clock / step) * step, n = +u.searchParams.get('limit');
-  const rows = Array.from({length: n}, (_, i) => { const t = end - (n - 1 - i) * step; return [t, '1', '1', '1', String(100 + 20 * Math.sin(t / step / 5)), '1', t + step - 1]; });
-  return new Response(JSON.stringify(rows));
+  const u = new URL(url);
+  if (binanceDown || blocked.some(h => u.host.includes(h))) return new Response('{}', {status: 403});
+  const step = H, end = Math.floor(clock / step) * step;
+  const times = n => Array.from({length: n}, (_, i) => end - (n - 1 - i) * step);
+  if (u.host.includes('okx')) return new Response(JSON.stringify({code: '0', msg: '', data: times(+u.searchParams.get('limit')).reverse().map(t => [String(t), '1', '1', '1', String(price(t)), '1', '1', '1', t + step <= clock ? '1' : '0'])}));
+  if (u.host.includes('coinbase')) return new Response(JSON.stringify(times(300).reverse().map(t => [t / 1000, 1, 1, 1, price(t), 1])));
+  return new Response(JSON.stringify(times(+u.searchParams.get('limit')).map(t => [t, '1', '1', '1', String(price(t)), '1', t + step - 1])));
 };
 // Minimal Durable Object runtime: one instance per name, storage with writes counted, a single alarm.
 function namespace(env) {
@@ -93,13 +99,34 @@ test('Binance down: retry in 5 minutes without rewriting the bot', async () => {
   assert.equal(room.state.storage.alarm, clock + 5 * 60000);
 });
 
+test('Binance refused: OKX then Coinbase take over with the same candles', async () => {
+  const {SOURCES} = await import('./byhnex-bot.js');
+  const ref = await SOURCES[0].get('BTC', '1h', 300);
+  for (const name of ['OKX', 'Coinbase']) {
+    const rows = await SOURCES.find(x => x.name === name).get('BTC', '1h', 300);
+    assert.deepEqual(rows.map(r => [r[0], r[6], +r[4]]), ref.map(r => [r[0], r[6], +r[4]]), name + ' rows line up with Binance');
+  }
+  const env = await makeEnv();
+  blocked = ['binance'];
+  try {
+    const r = await call(env, '/start', {body: dca});
+    assert.equal(r.status, 200);
+    assert.equal(r.bot.states.BTC.trades.length, 1);
+    const h = await (await worker.fetch(new Request('https://bot.test/health?prices'), env)).json();
+    assert.deepEqual([h.prices, h.source], [true, 'OKX']);
+    blocked = ['binance', 'okx'];
+    assert.equal((await (await worker.fetch(new Request('https://bot.test/health?prices'), env)).json()).source, 'Coinbase');
+    assert.equal((await call(env, '/start', {body: {...dca, interval: '4h'}})).status, 503, 'no source left for 4h candles');
+  } finally { blocked = []; }
+});
+
 test('the main Binance API is used when the data mirror refuses', async () => {
   const env = await makeEnv(), real = globalThis.fetch;
   globalThis.fetch = async url => String(url).includes('data-api') ? new Response('{}', {status: 403}) : real(url);
   try { assert.equal((await call(env, '/start', {body: dca})).status, 200); }
   finally { globalThis.fetch = real; }
   const h = await (await worker.fetch(new Request('https://bot.test/health?binance'), env)).json();
-  assert.equal(h.binance, true);
+  assert.equal(h.prices, true);
   assert.ok(env.BOTS.places.length && env.BOTS.places.every(p => p === 'weur'), 'bots and the check live in Western Europe');
 });
 
@@ -112,13 +139,13 @@ test('a bot from the previous version is carried over', async () => {
   assert.equal((await call(env, '/me', {code: CODE2})).bot, null);
 });
 
-test('Binance blocked: the check says so, with every host tried', async () => {
+test('every source blocked: the check says so, with each one tried', async () => {
   const env = await makeEnv();
   binanceDown = true;
   try {
     const h = await (await worker.fetch(new Request('https://bot.test/health?binance'), env)).json();
-    assert.equal(h.binance, false);
-    assert.match(h.error, /data-api.*451.*api\.binance\.com.*451/);
+    assert.equal(h.prices, false);
+    assert.match(h.error, /Binance HTTP 403 ; Binance \(API\) HTTP 403 ; OKX HTTP 403 ; Coinbase HTTP 403/);
   } finally { binanceDown = false; }
 });
 

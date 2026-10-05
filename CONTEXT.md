@@ -105,11 +105,14 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Chaque personne a son Durable
   Object `BotRoom` (SQLite, offre gratuite) : stockage coherent (une pause ne peut pas etre ecrasee) et une
   alarme qui le reveille juste apres chaque cloture de bougie (+20 s) ; rien ne tourne entre deux. Binance
-  injoignable : nouvel essai 5 min plus tard sans reecrire. Hotes : data-api.binance.vision puis api.binance.com.
+  injoignable : nouvel essai 5 min plus tard sans reecrire. Sources de cours essayees dans l'ordre : Binance
+  (data-api puis api), OKX (memes paires USDT, bougies UTC, 1Dutc), Coinbase (paires USD, pas de 4 h). Binance
+  refuse les serveurs Cloudflare (403 en Europe, 451 aux USA) : en pratique c'est OKX qui sert le bot serveur.
+  Toutes sont converties en lignes facon Binance (closeTime = openTime + pas - 1).
   Le KV de la version precedente (binding OLD) n'est lu qu'une fois pour reprendre un bot existant.
   La page (onglet « Serveur 24 h/24 ») pilote le bot : /me, /start, /stop, /resume, /reset ;
   Les Durable Objects sont places en Europe de l'Ouest (locationHint weur) : Binance repond 451 aux USA.
-  /health?binance teste Binance depuis un Durable Object place pareil (controle par le deploiement).
+  /health?prices teste les sources depuis un Durable Object place pareil (controle par le deploiement).
   Adresse publiee dans `bot-config.json` par le deploiement.
   Secret (une fois, proprietaire) : CLOUDFLARE_API_TOKEN (Account ID deduit du jeton). Nouveau code : generer
   16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
