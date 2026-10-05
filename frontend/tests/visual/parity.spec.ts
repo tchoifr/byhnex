@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { LEGACY_URL, VUE_URL } from '../../playwright.config'
 import { CASES, stepRunsOn, type Device } from './cases'
-import { compare, prepare, settle } from './harness'
+import { MAX_DIFF_PIXELS, compare, prepare, settle } from './harness'
 
 const VIEWPORTS = {
   desktop: { width: 1440, height: 900 },
@@ -41,7 +41,7 @@ for (const pageCase of CASES) {
         if (textLegacy !== textVue) failures.push(`${step.label} : le texte affiché diffère`)
         const [a, b] = await Promise.all([shot(legacy), shot(vue)])
         const result = compare(a, b)
-        if (result.diffPixels !== 0) {
+        if (result.diffPixels < 0 || result.diffPixels > MAX_DIFF_PIXELS) {
           failures.push(`${step.label} : ${result.sizeMismatch ?? result.diffPixels + ' pixels différents'}`)
           // Saved in test-results/ and attached to the report: original, Vue version, differences in red.
           for (const [suffix, body] of [['origine', a], ['vue', b], ['differences', result.diff]] as const) {

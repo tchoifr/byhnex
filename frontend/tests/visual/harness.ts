@@ -56,6 +56,13 @@ export async function settle(page: Page): Promise<void> {
   await networkIdle(page)
 }
 
+/**
+ * Pixels allowed to differ per capture (about 0.0015 % of a desktop page): font and edge smoothing varies
+ * slightly between renders on Linux. A real change (moved element, colour, text) affects far more pixels,
+ * and the displayed text is compared separately.
+ */
+export const MAX_DIFF_PIXELS = 25
+
 export function compare(a: Buffer, b: Buffer): { diffPixels: number; diff?: Buffer; sizeMismatch?: string } {
   const pa = PNG.sync.read(a)
   const pb = PNG.sync.read(b)
