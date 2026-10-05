@@ -66,7 +66,12 @@ jobs:
         run: |
           API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
-          KV_ID=$(curl -fsS -H "$AUTH" "$API/storage/kv/namespaces?per_page=100" | jq -r '.result[] | select(.title=="byhnex-bot") | .id' | head -n1)
+          LIST=$(curl -sS -H "$AUTH" "$API/storage/kv/namespaces?per_page=100")
+          if ! echo "$LIST" | jq -e '.success' > /dev/null; then
+            echo "::error::Cloudflare refuse l'acces au stockage KV : $(echo "$LIST" | jq -c '[.errors[]?.message]'). Le jeton doit etre cree avec le modele « Edit Cloudflare Workers » et ton compte dans Account Resources."
+            exit 1
+          fi
+          KV_ID=$(echo "$LIST" | jq -r '.result[] | select(.title=="byhnex-bot") | .id' | head -n1)
           if [ -z "$KV_ID" ]; then
             KV_ID=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"title":"byhnex-bot"}' "$API/storage/kv/namespaces" | jq -r '.result.id')
           fi
