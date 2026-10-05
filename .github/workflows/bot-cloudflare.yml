@@ -34,7 +34,7 @@ jobs:
           if [ -z "$TOKEN" ]; then
             echo "::warning::Secret CLOUDFLARE_API_TOKEN manquant : deploiement ignore."; ok=false
           else
-            echo "Jeton lu : ${#TOKEN} caracteres (le secret en contenait ${#CLOUDFLARE_API_TOKEN}), type ${TOKEN:0:5}."
+            echo "Jeton lu : ${#TOKEN} caracteres (le secret en contenait ${#CLOUDFLARE_API_TOKEN}), type ${TOKEN:0:5}, empreinte $(printf '%s' "$TOKEN" | sha256sum | cut -c1-8) (change quand le secret est remplace)."
             # Hash of the token pasted in the chat on 2026-10-05 and deleted since: spots it if it is pasted again.
             if [ "$(printf '%s' "$TOKEN" | sha256sum | cut -d' ' -f1)" = "723d204952d58447a38e9c3e77f4b6327c0a65321ec46c6f2cca3239ee079e1f" ]; then echo "::error::C'est l'ANCIEN jeton (supprime). Cree un nouveau jeton et remplace le secret."; fi
             VERIFY=$(curl -sS -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify || true)
