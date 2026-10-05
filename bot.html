@@ -147,6 +147,19 @@
   .ptabs button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted); font: 800 12px Manrope, sans-serif; cursor: pointer; }
   .ptabs button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff); border-color: transparent; }
   .swipe-hint { display: none; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 18px; border: 1px solid var(--line); background: rgba(10,12,28,.7); }
+  .modes button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 52px; padding: 6px 8px; border: 0; border-radius: 14px; background: none; color: var(--muted); cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; }
+  .modes button b { font-size: 13.5px; font-weight: 800; }
+  .modes button small { font-size: 11px; color: var(--dim); }
+  .modes button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff 60%,#ff52d9); box-shadow: 0 8px 22px -12px #8d63ff; }
+  .modes button[aria-selected="true"] small { color: rgba(10,7,24,.75); }
+  .modes button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  a.btn { text-decoration: none; }
+  .server-help { grid-column: 1 / -1; padding: 12px 14px; border-radius: 14px; background: rgba(58,230,255,.05); border: 1px solid rgba(58,230,255,.2); font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+  .server-help ol { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+  .server-help b { color: var(--ink); }
+  .server-help p { margin: 0; }
+  .server-help code { font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
   .legend .dash { height: 0; border-top: 2px dashed; border-radius: 0; background: none; }
   .price-legend { margin-top: 8px; gap: 8px 14px; }
   .ind { margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(150,160,255,.08); }
@@ -201,6 +214,11 @@
     <span class="chip">◎ Argent fictif · aucun ordre réel</span>
   </header>
 
+  <div class="modes" role="tablist" aria-label="Où tourne le bot">
+    <button type="button" role="tab" id="mode-local" aria-selected="true"><b>📱 Sur cet appareil</b><small>tant que la page est ouverte</small></button>
+    <button type="button" role="tab" id="mode-server" aria-selected="false"><b>☁️ Serveur 24 h/24</b><small>même application fermée</small></button>
+  </div>
+
   <section class="card status" id="status" aria-live="polite">
     <div class="orb" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V5M9.5 13h.01M14.5 13h.01M9.5 16.2h5M3 13v2M21 13v2"/><circle cx="12" cy="4" r="1"/></svg></div>
     <div class="status-text"><b id="status-title">Bot en veille</b><p id="status-text">Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.</p><p class="clock" id="clock"></p></div>
@@ -209,6 +227,16 @@
       <button class="btn primary" id="start" type="button">▶ Lancer en direct</button>
       <button class="btn" id="stop" type="button" hidden>⏸ Arrêter le bot</button>
       <button class="btn" id="reset" type="button" hidden>↺ Effacer le bot</button>
+      <a class="btn primary" id="server-config" href="https://github.com/osvalt16/byhnex/actions/workflows/bot-serveur.yml" target="_blank" rel="noopener" hidden>⚙ Régler sur GitHub</a>
+      <button class="btn" id="server-help" type="button" hidden aria-expanded="false">Comment faire ?</button>
+    </div>
+    <div class="server-help" id="server-help-box" hidden>
+      <ol>
+        <li>Touche <b>« Régler sur GitHub »</b> : la page GitHub du bot s’ouvre (connecte-toi à ton compte).</li>
+        <li>Touche <b>« Run workflow »</b>, choisis <b>action = start</b>, tes cryptos (ex. <code>BTC,SOL</code>), la stratégie, les bougies et le capital.</li>
+        <li>Valide : le bot démarre en 1 à 2 minutes puis tourne tout seul. Reviens ici pour le suivre.</li>
+      </ol>
+      <p><b>stop</b> = pause · <b>resume</b> = reprendre · <b>reset</b> = effacer. GitHub le fait passer environ toutes les 15 min à 3 h ; entre deux passages, cette page recalcule l’état avec les derniers cours, et le serveur rattrape chaque bougie au prix de clôture.</p>
     </div>
   </section>
 
@@ -304,6 +332,9 @@ if (old?.state) {
   write(LIVE_KEY, live); write(OLD_LIVE_KEY, null);
 }
 let replay = null, candlesBy = {}, focus = prefs.assets[0], timer = null, clock = null, loadId = 0;
+// Server bot (GitHub Actions, see scripts/bot-server.mjs): read-only here, published on the bot-data branch.
+const MODE_KEY = 'byhnex-bot-mode-v1', SERVER_URL = 'https://raw.githubusercontent.com/osvalt16/byhnex/bot-data/bot.json';
+let mode = 'local', serverRaw = null, serverTimer = null, localLive = null, localPrefs = null, serverLoadId = 0;
 const cache = new Map();
 
 /* ---------- settings ---------- */
@@ -433,7 +464,7 @@ async function tickLive() {
   if (!live) return;
   const sub = subCfg(live.cfg, live.assets.length);
   const got = await Promise.allSettled(live.assets.map(a => fetchCandles(a, live.interval, 500, true)));
-  if (!live) return;
+  if (!live || mode !== 'local') return;
   const failed = [], fresh = !live.checks;
   live.checks ||= [];
   live.assets.forEach((a, i) => {
@@ -465,8 +496,77 @@ function stopLive() {
 function resetLive() { live = null; clearInterval(timer); clearInterval(clock); write(LIVE_KEY, null); runReplay(); }
 
 /* ---------- rendering ---------- */
+/* ---------- server bot ---------- */
+function setMode(next) {
+  if (next === mode) return;
+  if (next === 'server') {
+    localLive = live; localPrefs = prefs;
+    clearInterval(timer); clearInterval(clock); loadId++;
+    mode = 'server'; live = null; serverRaw = undefined;
+    loadServer();
+    serverTimer = setInterval(loadServer, 60000);
+    clock = setInterval(renderClock, 1000);
+  } else {
+    clearInterval(serverTimer); clearInterval(clock); serverLoadId++;
+    mode = 'local'; live = localLive; prefs = localPrefs || prefs;
+    renderSettings();
+    if (live) { renderAll(); schedule(); } else runReplay();
+  }
+  write(MODE_KEY, mode);
+  renderModes();
+  renderAll();
+}
+function renderModes() {
+  $('mode-local').setAttribute('aria-selected', String(mode === 'local'));
+  $('mode-server').setAttribute('aria-selected', String(mode === 'server'));
+}
+// The server only passes every 15 min to 3 h; in between, the same engine replays the candles closed since,
+// so the page always shows the state the server will reach at its next pass.
+async function loadServer() {
+  const id = ++serverLoadId;
+  try {
+    const r = await fetch(`${SERVER_URL}?t=${Math.floor(Date.now() / 60000)}`, {cache: 'no-store'});
+    if (id !== serverLoadId) return;
+    if (r.status === 404) serverRaw = null;
+    else if (!r.ok) throw Error('HTTP ' + r.status);
+    else { const j = await r.json(); serverRaw = j && j.assets ? j : null; }
+  } catch { if (id === serverLoadId && serverRaw === undefined) serverRaw = 'error'; }
+  if (id !== serverLoadId || mode !== 'server') return;
+  if (!serverRaw || serverRaw === 'error') { live = null; return renderAll(); }
+  const view = structuredClone(serverRaw), sub = subCfg(view.cfg, view.assets.length);
+  view.checks ||= []; view.history ||= [];
+  const got = await Promise.allSettled(view.assets.map(a => fetchCandles(a, view.interval, 500, true)));
+  if (id !== serverLoadId || mode !== 'server') return;
+  got.forEach((g, i) => {
+    if (g.status !== 'fulfilled') return;
+    const a = view.assets[i], {candles, price} = g.value;
+    candlesBy[a] = candles; view.prices[a] = price;
+    if (view.stopped) return;
+    if (view.resume) view.states[a].lastTime = Math.max(view.states[a].lastTime, candles.at(-2)?.closeTime ?? 0);
+    const log = [];
+    runBot(view.states[a], candles, sub, log);
+    view.checks.push(...log.map(e => ({...e, asset: a})));
+  });
+  view.checkedAt = Date.now();
+  live = view;
+  if (!live.stopped) { const {bot, hold} = liveTotals(); live.history = [...live.history, {t: Date.now(), bot, hold}]; }
+  prefs = {...(localPrefs || prefs), assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}};
+  if (!live.assets.includes(focus)) focus = live.assets[0];
+  renderSettings();
+  renderAll();
+}
+
 function renderClock() {
   if (!live) { $('clock').textContent = ''; return; }
+  if (live.server) {
+    const mins = Math.max(0, Math.round((Date.now() - live.updatedAt) / 6e4));
+    const pass = mins < 1 ? 'à l’instant' : mins < 120 ? `il y a ${mins} min` : `il y a ${Math.round(mins / 60)} h`;
+    if (live.stopped) { $('clock').textContent = `Serveur en pause · dernier passage ${pass}.`; return; }
+    const step = STEP[live.interval], left = Math.ceil(Date.now() / step) * step - Date.now();
+    const h = Math.floor(left / 36e5), m = Math.floor(left % 36e5 / 6e4), s = Math.floor(left % 6e4 / 1000), two = v => String(v).padStart(2, '0');
+    $('clock').innerHTML = `<span class="pulse"></span>Prochaine clôture dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · serveur passé ${pass}`;
+    return;
+  }
   const ago = Math.max(0, Math.round((Date.now() - live.checkedAt) / 1000));
   const seen = ago < 60 ? `il y a ${ago} s` : `à ${hhmm(live.checkedAt)}`;
   if (live.stopped) { $('clock').textContent = `Cours vérifiés ${seen}.`; return; }
@@ -478,13 +578,17 @@ function renderClock() {
 function renderAll() {
   const running = live && !live.stopped;
   document.querySelector('.bot').classList.toggle('running', !!running);
-  $('start').hidden = !!live; $('stop').hidden = !running; $('reset').hidden = !live;
-  for (const el of $('settings').elements) el.disabled = !!live;
+  const srv = mode === 'server';
+  $('start').hidden = !!live || srv; $('stop').hidden = !running || srv; $('reset').hidden = !live || srv;
+  $('server-config').hidden = !srv; $('server-help').hidden = !srv;
+  if (!srv) $('server-help-box').hidden = true;
+  for (const el of $('settings').elements) el.disabled = !!live || srv;
   lockAssets();
   const assets = live ? live.assets : prefs.assets;
   if (!assets.includes(focus)) focus = assets[0];
   if (live) return renderLive();
   renderClock();
+  if (srv) return renderServerEmpty();
   $('status-title').textContent = 'Bot en veille';
   if (!replay) { $('status-text').textContent = $('error').textContent ? 'Les cours ne sont pas disponibles pour l’instant : le bot ne peut ni rejouer ni démarrer. Recharge la page dans un instant.' : 'Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.'; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', 'Aucun résultat pour l’instant.'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
   const s = replay.stats, names = Object.keys(replay.assets), first = new Date(replay.equity[0].t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
@@ -502,11 +606,26 @@ function renderAll() {
   $('equity-title').textContent = names.length > 1 ? `Valeur du portefeuille (${names.join(' + ')})` : 'Valeur du portefeuille';
   renderEquity(replay.equity);
 }
+function renderServerEmpty() {
+  const loading = serverRaw === undefined, failed = serverRaw === 'error';
+  $('status-title').textContent = loading ? 'Connexion au serveur…' : failed ? 'Serveur injoignable' : 'Bot serveur pas encore lancé';
+  $('status-text').textContent = loading ? 'Lecture du bot qui tourne sur GitHub.' : failed ? 'Impossible de lire le bot serveur pour l’instant. Nouvel essai dans une minute.' :
+    'Ce bot tourne sur GitHub 24 h/24, même quand l’application est fermée. Lance-le une fois depuis GitHub : touche « Comment faire ? ».';
+  $('pnl-label').textContent = 'Portefeuille fictif'; $('pnl').textContent = '—';
+  $('coins').innerHTML = ''; renderTiles(null);
+  renderJournal([], 'Journal du bot serveur', 'Le journal se remplira dès le premier passage du serveur.');
+  $('price-plot').innerHTML = ''; $('ind-plot').hidden = true; $('price-legend').innerHTML = ''; $('price-tabs').innerHTML = '';
+  $('equity-plot').innerHTML = ''; $('equity-table').innerHTML = '';
+}
 function renderLive() {
   const {bot, hold, sub} = liveTotals(), gain = (bot / live.cfg.capital - 1) * 100, holdGain = (hold / live.cfg.capital - 1) * 100;
   const open = live.assets.filter(a => live.states[a].qty > 0);
-  $('status-title').textContent = live.stopped ? 'Bot en pause' : open.length ? `Actif · en position sur ${open.join(', ')}` : `Actif · attend le signal sur ${live.assets.join(', ')}`;
-  $('status-text').textContent = live.error || (live.stopped ? 'Le portefeuille fictif est conservé. Efface le bot pour en lancer un autre.' :
+  const state = live.stopped ? 'en pause' : open.length ? `en position sur ${open.join(', ')}` : `attend le signal sur ${live.assets.join(', ')}`;
+  $('status-title').textContent = live.server ? 'Serveur · ' + state : live.stopped ? 'Bot en pause' : 'Actif · ' + state;
+  $('status-text').textContent = live.error || (live.server ?
+    (live.stopped ? 'Le bot serveur est en pause, son portefeuille fictif est conservé. Pour le reprendre : « Régler sur GitHub », action resume.' :
+      `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Tourne sur GitHub depuis le ${when(live.startedAt)}, même application fermée.`) :
+    live.stopped ? 'Le portefeuille fictif est conservé. Efface le bot pour en lancer un autre.' :
     `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Lancé le ${when(live.startedAt)}. Il décide à chaque clôture de bougie et suit les cours chaque minute.`);
   renderClock();
   $('pnl-label').textContent = 'Portefeuille fictif';
@@ -519,16 +638,16 @@ function renderLive() {
   const sells = trades.filter(t => t.side === 'sell');
   renderTiles({final: bot, pct: gain, holdPct: holdGain, trades: trades.length, winRate: sells.length ? sells.filter(t => t.pnl > 0).length / sells.length * 100 : null, fees: live.assets.reduce((s, a) => s + live.states[a].fees, 0), live: true});
   const feed = [...trades, ...(live.checks || [])].sort((x, y) => x.t - y.t);
-  renderJournal(feed, 'Journal du bot en direct', 'Le bot prend sa première décision dès que les cours sont chargés.', live.assets.length > 1);
-  $('journal-title').textContent = `Journal du bot en direct · ${trades.length} ordre${trades.length > 1 ? 's' : ''}`;
+  renderJournal(feed, live.server ? 'Journal du bot serveur' : 'Journal du bot en direct', 'Le bot prend sa première décision dès que les cours sont chargés.', live.assets.length > 1);
+  $('journal-title').textContent = `Journal du bot ${live.server ? 'serveur' : 'en direct'} · ${trades.length} ordre${trades.length > 1 ? 's' : ''}`;
   if (candlesBy[focus]) renderPrice(candlesBy[focus], trades.filter(t => t.asset === focus), focus, 200);
   $('equity-title').textContent = 'Valeur du portefeuille depuis le lancement';
   if ((live.history || []).length >= 2) {
     // The curve is only sampled while the page is open: a long gap is drawn as a break, not as a straight line.
     const eq = [], h = live.history;
-    h.forEach((e, i) => { if (i && e.t - h[i - 1].t > 180000) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
+    h.forEach((e, i) => { if (i && e.t - h[i - 1].t > (live.server ? 5 * 36e5 : 180000)) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
     renderEquity(eq);
-    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', '<p class="hint">Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.</p>');
+    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', `<p class="hint">${live.server ? 'Ligne coupée : le serveur GitHub n’est pas passé pendant plusieurs heures. Il a rattrapé les bougies manquées au passage suivant.' : 'Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.'}</p>`);
   }
   else { $('equity-plot').innerHTML = '<p class="empty">La courbe se remplit à chaque vérification des cours (toutes les minutes) tant que la page est ouverte.</p>'; $('equity-table').innerHTML = ''; }
 }
@@ -687,11 +806,15 @@ $('settings').addEventListener('submit', e => e.preventDefault());
 $('price-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('coins').addEventListener('click', e => { const b = e.target.closest('.coin'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('start').addEventListener('click', startLive);
+$('mode-local').addEventListener('click', () => setMode('local'));
+$('mode-server').addEventListener('click', () => setMode('server'));
+$('server-help').addEventListener('click', () => { const box = $('server-help-box'); box.hidden = !box.hidden; $('server-help').setAttribute('aria-expanded', String(!box.hidden)); });
 $('stop').addEventListener('click', stopLive);
 $('reset').addEventListener('click', resetLive);
 $('table-toggle').addEventListener('click', () => { const open = $('equity-table').hidden; $('equity-table').hidden = !open; $('table-toggle').setAttribute('aria-expanded', String(open)); $('table-toggle').textContent = open ? 'Masquer le tableau' : 'Voir les chiffres en tableau'; });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 200); });
-if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; focus = live.assets[0]; renderSettings(); renderAll(); schedule(); }
+if (read(MODE_KEY) === 'server') { if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; } setMode('server'); }
+else if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; focus = live.assets[0]; renderSettings(); renderAll(); schedule(); }
 else runReplay();
 </script>
 <script type="module" src="sidebar.js?v=20261004-w3"></script></body>
