@@ -31,6 +31,9 @@ for (const pageCase of CASES) {
         if (step.run) {
           await step.run(legacy)
           await step.run(vue)
+          // Park the pointer on empty space: after a re-layout the browser refreshes :hover at a moment
+          // that depends on when the DOM changed, which is not a visual difference of the page.
+          for (const page of [legacy, vue]) await page.mouse.move(Math.floor(viewport.width / 2), 5)
           await settle(legacy)
           await settle(vue)
         }

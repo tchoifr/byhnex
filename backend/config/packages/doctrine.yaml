@@ -35,9 +35,7 @@ when@test:
             # "TEST_TOKEN" is typically set by ParaTest
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
     services:
-        # SQLite only applies ON DELETE CASCADE when foreign keys are switched on.
-        doctrine.dbal.sqlite_foreign_keys:
-            class: Doctrine\DBAL\Driver\AbstractSQLiteDriver\Middleware\EnableForeignKeys
+        App\Doctrine\SqliteForeignKeysMiddleware:
             tags: [doctrine.middleware]
 
 when@prod:
