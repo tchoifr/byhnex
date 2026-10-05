@@ -154,11 +154,6 @@
   .bot.srv-wait .layout { display: none; }
   .bot.has-bot .layout { grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 1100px) { .bot.has-bot .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
-  .modes { width: min(100%, 520px); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 18px; border: 1px solid var(--line); background: rgba(10,12,28,.7); }
-  .modes button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 14px; background: none; color: var(--muted); cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; }
-  .modes button b { font-size: 13.5px; font-weight: 800; }
-  .modes button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff 60%,#ff52d9); box-shadow: 0 8px 22px -12px #8d63ff; }
-  .modes button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   a.btn { text-decoration: none; }
   .server-help { grid-column: 1 / -1; padding: 12px 14px; border-radius: 14px; background: rgba(58,230,255,.05); border: 1px solid rgba(58,230,255,.2); font-size: 12.5px; line-height: 1.55; color: var(--muted); }
   .server-help ol { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
@@ -226,17 +221,12 @@
     <span class="chip">◎ Argent fictif · pas un conseil financier</span>
   </header>
 
-  <div class="modes" role="tablist" aria-label="Où tourne le bot">
-    <button type="button" role="tab" id="mode-local" aria-selected="true"><b>📱 Sur cet appareil</b></button>
-    <button type="button" role="tab" id="mode-server" aria-selected="false"><b>☁️ Serveur 24 h/24</b></button>
-  </div>
-
   <section class="card status" id="status" aria-live="polite">
     <div class="orb" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V5M9.5 13h.01M14.5 13h.01M9.5 16.2h5M3 13v2M21 13v2"/><circle cx="12" cy="4" r="1"/></svg></div>
     <div class="status-text"><b id="status-title">Bot en veille</b><p id="status-text"></p><p class="cfg" id="cfg-sum" hidden></p><p class="clock" id="clock"></p></div>
     <div class="status-pnl"><span id="pnl-label">Résultat rejoué</span><strong id="pnl">—</strong></div>
     <div class="actions">
-      <button class="btn primary" id="start" type="button">▶ Lancer en direct</button>
+      <button class="btn primary" id="start" type="button">▶ Lancer le bot</button>
       <button class="btn" id="stop" type="button" hidden>⏸ Pause</button>
       <button class="btn" id="reset" type="button" hidden>↺ Effacer</button>
       <button class="btn" id="resume" type="button" hidden>▶ Reprendre</button>
@@ -341,7 +331,7 @@ if (old?.state) {
 }
 let replay = null, candlesBy = {}, focus = prefs.assets[0], timer = null, clock = null, loadId = 0;
 // Server bot: Cloudflare Worker (bot-worker/), address published in bot-config.json, one bot per personal code.
-const MODE_KEY = 'byhnex-bot-mode-v1', CODE_KEY = 'byhnex-bot-code-v1';
+const CODE_KEY = 'byhnex-bot-code-v1';
 let mode = 'local', serverState = 'loading', serverUrl, serverName = '', serverCode = read(CODE_KEY), serverTimer = null, localLive = null, localPrefs = null, serverLoadId = 0;
 const cache = new Map();
 
@@ -520,13 +510,7 @@ function setMode(next) {
     renderSettings();
     if (live) { renderAll(); schedule(); } else runReplay();
   }
-  write(MODE_KEY, mode);
-  renderModes();
   renderAll();
-}
-function renderModes() {
-  $('mode-local').setAttribute('aria-selected', String(mode === 'local'));
-  $('mode-server').setAttribute('aria-selected', String(mode === 'server'));
 }
 async function serverCall(path, body) {
   const r = await fetch(serverUrl + path, {method: path === '/me' ? 'GET' : 'POST', cache: 'no-store',
@@ -539,7 +523,11 @@ async function serverCall(path, body) {
 async function loadServer() {
   const id = ++serverLoadId;
   if (!serverUrl) {
-    try { serverUrl = (await (await fetch('bot-config.json?t=' + Math.floor(Date.now() / 6e4), {cache: 'no-store'})).json()).url || null; }
+    try {
+      const r = await fetch('bot-config.json?t=' + Math.floor(Date.now() / 6e4), {cache: 'no-store'});
+      if (!r.ok) throw Error('HTTP ' + r.status);
+      serverUrl = (await r.json()).url || null;
+    }
     catch { serverUrl = undefined; }
   }
   if (id !== serverLoadId || mode !== 'server') return;
@@ -632,7 +620,7 @@ function renderAll() {
   const srv = mode === 'server', st = serverState, ready = !srv || st === 'empty';
   document.querySelector('.bot').classList.toggle('srv-wait', srv && !live && !ready);
   $('start').hidden = !!live || !ready;
-  if (!$('start').disabled) $('start').textContent = srv ? '▶ Lancer sur le serveur' : '▶ Lancer en direct';
+  if (!$('start').disabled) $('start').textContent = '▶ Lancer le bot';
   $('stop').hidden = !running; $('reset').hidden = !live;
   $('resume').hidden = !(srv && live && live.stopped);
   $('logout').hidden = !(srv && (st === 'bot' || st === 'empty'));
@@ -646,7 +634,7 @@ function renderAll() {
   if (live) return renderLive();
   renderClock();
   if (!ready) return renderServerEmpty();
-  $('status-title').textContent = srv ? 'Serveur · prêt' : 'Aperçu de la stratégie';
+  $('status-title').textContent = 'Aperçu de la stratégie';
   if (!replay) { $('status-text').textContent = $('error').textContent ? 'Cours indisponibles, réessaie dans un instant.' : ''; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', '—'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
   const s = replay.stats, names = Object.keys(replay.assets), first = new Date(replay.equity[0].t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
   $('status-text').textContent = `Rejoué depuis le ${first} · ${names.join(', ')}`;
@@ -682,7 +670,7 @@ function renderLive() {
   const {bot, hold, sub} = liveTotals(), gain = (bot / live.cfg.capital - 1) * 100, holdGain = (hold / live.cfg.capital - 1) * 100;
   const open = live.assets.filter(a => live.states[a].qty > 0);
   const state = live.stopped ? 'en pause' : open.length ? `en position sur ${open.join(', ')}` : `attend le signal sur ${live.assets.join(', ')}`;
-  $('status-title').textContent = live.server ? 'Serveur · ' + state : live.stopped ? 'Bot en pause' : 'Actif · ' + state;
+  $('status-title').textContent = live.stopped ? 'Bot en pause' : 'Actif · ' + state;
   $('status-text').textContent = live.error || (live.stopped ? 'Portefeuille fictif conservé.' : `Depuis le ${when(live.startedAt)}`);
   renderClock();
   $('pnl-label').textContent = 'Portefeuille fictif';
@@ -863,8 +851,6 @@ $('settings').addEventListener('submit', e => e.preventDefault());
 $('price-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('coins').addEventListener('click', e => { const b = e.target.closest('.coin'); if (b && b.dataset.asset !== focus) { focus = b.dataset.asset; renderAll(); } });
 $('start').addEventListener('click', startLive);
-$('mode-local').addEventListener('click', () => setMode('local'));
-$('mode-server').addEventListener('click', () => setMode('server'));
 $('login-box').addEventListener('submit', e => {
   e.preventDefault();
   const code = $('code').value.trim();
@@ -881,9 +867,9 @@ $('resume').addEventListener('click', () => serverAction('resume', 'Reprise…',
 $('reset').addEventListener('click', () => { if (mode !== 'server') return resetLive(); if (confirm('Effacer ton bot serveur ? Son portefeuille fictif sera perdu.')) serverAction('reset', 'Effacement…', '/reset'); });
 $('table-toggle').addEventListener('click', () => { const open = $('equity-table').hidden; $('equity-table').hidden = !open; $('table-toggle').setAttribute('aria-expanded', String(open)); $('table-toggle').textContent = open ? 'Masquer le tableau' : 'Voir les chiffres en tableau'; });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 200); });
-if (read(MODE_KEY) === 'server') { if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; } setMode('server'); }
-else if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; focus = live.assets[0]; renderSettings(); renderAll(); schedule(); }
-else runReplay();
+// The bot always runs on the server (Cloudflare, 24 h/24). A bot left from the former on-device mode is put aside.
+live = null;
+setMode('server');
 </script>
 <script type="module" src="sidebar.js?v=20261004-w3"></script></body>
 </html>
