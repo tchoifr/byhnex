@@ -1,5 +1,9 @@
 # Byhnex — cours réels, portefeuille virtuel
 
+> **En production sur https://byhnex.com.** Le projet migre vers **Vue 3 + TypeScript** (`frontend/`) et **Symfony 7.4** (`backend/`), page par page et sans changement visible. Règles de travail (IA et humains) : **[AGENTS.md](AGENTS.md)**. Architecture : [docs/architecture.md](docs/architecture.md). Migration : [docs/migration.md](docs/migration.md). Déploiement : [deploy/README.md](deploy/README.md).
+>
+> La suite de ce fichier décrit les pages d'origine, à la racine du dépôt.
+
 Site statique : accueil avec boîte à outils, recherche et favoris ; quatre outils dans le menu (Dashboard Marché et Backtest retirés du menu ; Positionnement fusionné dans Signaux) dont le graphique d’accumulation SOL/BTC. Les cartes reprennent le fond sombre translucide et les liserés cyan/violet de Byhnex. Le grand bloc graphique a été retiré de l’accueil.
 
 ## Démarrer et vérifier

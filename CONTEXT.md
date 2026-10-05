@@ -1,5 +1,8 @@
 # Contexte de developpement - Byhnex (suivi crypto & signaux)
 
+> **Mise à jour : les règles de développement sont désormais dans [AGENTS.md](AGENTS.md), qui fait foi.** Ce fichier décrit les pages d’origine (racine du dépôt) et reste valable pour les règles métier (aucun ordre réel, aucune clé d’exchange, avertissement « pas un conseil financier »). Les règles techniques ci-dessous (« pas de build, pas de framework », un fichier HTML autonome) ne s’appliquent plus au nouveau code, écrit en Vue (frontend/) et Symfony (backend/).
+
+
 Ce fichier sert de reference rapide pour le projet. Il doit rester simple, concret et a jour.
 
 ## Objectif du projet
