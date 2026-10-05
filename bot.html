@@ -230,7 +230,7 @@
       <button class="btn" id="stop" type="button" hidden>⏸ Pause</button>
       <button class="btn" id="reset" type="button" hidden>↺ Effacer</button>
       <button class="btn" id="resume" type="button" hidden>▶ Reprendre</button>
-      <button class="btn" id="logout" type="button" hidden>Changer de code</button>
+      <button class="btn" id="logout" type="button" hidden>⎋ Déconnexion</button>
     </div>
     <form class="server-help" id="login-box" hidden autocomplete="off">
       <label for="code">Ton code personnel</label>
@@ -332,6 +332,9 @@ if (old?.state) {
 let replay = null, candlesBy = {}, focus = prefs.assets[0], timer = null, clock = null, loadId = 0;
 // Server bot: Cloudflare Worker (bot-worker/), address published in bot-config.json, one bot per personal code.
 const CODE_KEY = 'byhnex-bot-code-v1';
+// The code stays in this browser until « Déconnexion »; ask the browser not to clear the site storage on its own.
+const keepStorage = () => { try { navigator.storage?.persist?.(); } catch {} };
+if (read(CODE_KEY)) keepStorage();
 let mode = 'local', serverState = 'loading', serverUrl, serverName = '', serverCode = read(CODE_KEY), serverTimer = null, localLive = null, localPrefs = null, serverLoadId = 0;
 const cache = new Map();
 
@@ -624,8 +627,7 @@ function renderAll() {
   $('stop').hidden = !running; $('reset').hidden = !live;
   $('resume').hidden = !(srv && live && live.stopped);
   $('logout').hidden = !(srv && (st === 'bot' || st === 'empty'));
-  $('logout').textContent = serverName ? `👤 ${serverName}` : '👤 Code';
-  $('logout').title = 'Changer de code';
+  $('logout').title = serverName ? `Connecté : ${serverName}` : '';
   $('login-box').hidden = !(srv && st === 'login');
   for (const el of $('settings').elements) el.disabled = !!live || !ready;
   lockAssets();
@@ -855,13 +857,13 @@ $('login-box').addEventListener('submit', e => {
   e.preventDefault();
   const code = $('code').value.trim();
   if (code.replace(/[^A-Za-z0-9]/g, '').length < 12) { $('login-error').textContent = 'Le code fait 16 caractères, par exemple ABCD-EFGH-JKMN-PQRS.'; return; }
-  serverCode = code; write(CODE_KEY, code); $('login-error').textContent = ''; serverState = 'loading'; renderAll(); loadServer();
+  serverCode = code; write(CODE_KEY, code); keepStorage(); $('login-error').textContent = ''; serverState = 'loading'; renderAll(); loadServer();
 });
 document.querySelector('.charts').addEventListener('scroll', e => {
   const el = e.currentTarget, i = Math.round(el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth));
   $('chart-dots').querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k === i));
 }, {passive: true});
-$('logout').addEventListener('click', () => { serverCode = null; write(CODE_KEY, null); live = null; replay = null; serverState = 'login'; $('code').value = ''; renderAll(); });
+$('logout').addEventListener('click', () => { if (!confirm('Te déconnecter ? Ton bot continue de tourner sur le serveur.')) return; serverCode = null; write(CODE_KEY, null); live = null; replay = null; serverState = 'login'; $('code').value = ''; renderAll(); });
 $('stop').addEventListener('click', () => mode === 'server' ? serverAction('stop', 'Pause…', '/stop') : stopLive());
 $('resume').addEventListener('click', () => serverAction('resume', 'Reprise…', '/resume'));
 $('reset').addEventListener('click', () => { if (mode !== 'server') return resetLive(); if (confirm('Effacer ton bot serveur ? Son portefeuille fictif sera perdu.')) serverAction('reset', 'Effacement…', '/reset'); });
