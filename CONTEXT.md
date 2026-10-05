@@ -102,11 +102,14 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
 - `bot-worker/` (Cloudflare Workers, offre gratuite) + `.github/workflows/bot-cloudflare.yml` : bot virtuel
   24 h/24 (argent fictif, aucune cle d'exchange, aucun ordre reel). Meme moteur que la page (`bot-engine.js`),
   logique pure dans `bot-worker/bot-core.js`. Un bot prive par personne (« Moi », « Collègue »), deverrouille
-  par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Cron chaque minute, mais travail
-  uniquement a la cloture d'une bougie (cle KV `index` = prochaine echeance par personne) : 1 lecture KV par
-  minute au repos, 2 ecritures par cloture, une personne par passage et 300 bougies pour rester sous les
-  10 ms de CPU de l'offre gratuite (mesure : ~2-4 ms). La page (onglet « Serveur 24 h/24 ») pilote le bot :
-  /me, /start, /stop, /resume, /reset. Adresse publiee dans `bot-config.json` par le deploiement.
+  par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Chaque personne a son Durable
+  Object `BotRoom` (SQLite, offre gratuite) : stockage coherent (une pause ne peut pas etre ecrasee) et une
+  alarme qui le reveille juste apres chaque cloture de bougie (+20 s) ; rien ne tourne entre deux. Binance
+  injoignable : nouvel essai 5 min plus tard sans reecrire. Hotes : data-api.binance.vision puis api.binance.com.
+  Le KV de la version precedente (binding OLD) n'est lu qu'une fois pour reprendre un bot existant.
+  La page (onglet « Serveur 24 h/24 ») pilote le bot : /me, /start, /stop, /resume, /reset ;
+  /health?binance verifie l'acces a Binance depuis Cloudflare (controle par le deploiement).
+  Adresse publiee dans `bot-config.json` par le deploiement.
   Secret (une fois, proprietaire) : CLOUDFLARE_API_TOKEN (Account ID deduit du jeton). Nouveau code : generer
   16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
