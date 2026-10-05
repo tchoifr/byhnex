@@ -28,3 +28,14 @@ byhnex-ovh-api.zip
 strategy-fullscreen.png
 navigation-graph.png
 graph-coherence.png
+
+# Builds and test outputs
+dist-legacy/
+.dist-aside/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+
+# Symfony defaults without secrets (secrets live in .env.local, never committed)
+!backend/.env
+!backend/.env.test

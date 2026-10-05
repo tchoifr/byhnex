@@ -1,0 +1,14 @@
+parameters:
+    level: 8
+    phpVersion: 80200 # The OVH server runs PHP 8.2: newer syntax is reported.
+    paths:
+        - bin/
+        - config/
+        - public/
+        - src/
+        - tests/
+        - migrations/
+    excludePaths:
+        - config/reference.php
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
