@@ -1,0 +1,31 @@
+name: Récupérer les changements d'osvalt16
+
+# Every morning, merges osvalt16/byhnex main into this fork, then starts the production deployment.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    if: github.repository == 'tchoifr/byhnex'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Fusion de osvalt16/byhnex main
+        id: merge
+        run: |
+          if ! out=$(gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch=main 2>&1); then
+            echo "::error::Fusion automatique impossible : $out. Ouvrez https://github.com/$GITHUB_REPOSITORY et cliquez sur « Sync fork » (en cas de conflit, faites-le en local)."
+            exit 1
+          fi
+          echo "$out"
+          echo "type=$(echo "$out" | jq -r .merge_type)" >> "$GITHUB_OUTPUT"
+      - name: Déploiement de la nouvelle version
+        if: steps.merge.outputs.type != 'none'
+        run: gh workflow run deploy-prod.yml --repo "$GITHUB_REPOSITORY" --ref main

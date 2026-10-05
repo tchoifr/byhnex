@@ -1,0 +1,43 @@
+# byhnex.com — written to www/.htaccess by prod/build-prod.mjs on every deployment.
+RewriteEngine On
+
+# www → non-www
+RewriteCond %{HTTP_HOST} ^www\.byhnex\.com$ [NC]
+RewriteRule ^(.*)$ https://byhnex.com/$1 [L,R=301]
+
+# Force HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Hidden files are never served (Let's Encrypt keeps .well-known)
+RewriteRule (^|/)\.(?!well-known/) - [F]
+
+Options -Indexes
+DirectoryIndex index.html index.php
+ErrorDocument 404 /index.html
+
+<IfModule mod_deflate.c>
+AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
+# Scripts and styles carry ?v= versions; pages are always revalidated so a deployment shows at once.
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType image/png "access plus 30 days"
+ExpiresByType image/x-icon "access plus 30 days"
+ExpiresByType text/css "access plus 7 days"
+ExpiresByType application/javascript "access plus 7 days"
+ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+<FilesMatch "\.(html|webmanifest)$">
+Header set Cache-Control "no-cache"
+</FilesMatch>
+<FilesMatch "^sw\.js$">
+Header set Cache-Control "no-cache"
+</FilesMatch>
+</IfModule>
