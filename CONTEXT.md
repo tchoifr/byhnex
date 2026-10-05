@@ -99,6 +99,14 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   Secrets (une fois, proprietaire) : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DISPATCH_TOKEN.
   Les positions Coinbase ne vont jamais dans ces notifications publiques. `sw.js` affiche les
   notifications ; il n'a volontairement aucun gestionnaire `fetch` (pas de donnees en cache).
+- `scripts/bot-server.mjs` + `.github/workflows/bot-serveur.yml` : bot virtuel « serveur » 24 h/24
+  (argent fictif, aucune cle, aucun ordre reel). Meme moteur que la page (`bot-engine.js`).
+  Cron toutes les 15 min (GitHub le fait passer en pratique toutes les 15 min a ~3 h) ; chaque passage
+  decide toutes les bougies cloturees depuis le precedent. Etat publie dans `bot.json` sur la
+  branche `bot-data` (force-push, un seul commit), lu par la page via raw.githubusercontent.com.
+  Reglages : Actions > Bot serveur > Run workflow (action start/stop/resume/reset, cryptos, strategie,
+  bougies, capital, frais, reglages avances en JSON). La page (onglet « Serveur 24 h/24 ») est en
+  lecture seule et recalcule l'etat entre deux passages avec les derniers cours.
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
 - `crypto-bot-virtuel.html` et `rainbow-doge.html` : redirections vers les pages
   renommees, conservees pour les anciens liens et notifications deja envoyees.

@@ -1,0 +1,72 @@
+name: Bot serveur
+# Bot de trading virtuel 24 h/24 (argent fictif, aucun ordre reel, aucune cle).
+# Pour le lancer ou changer ses reglages : onglet Actions > Bot serveur > Run workflow.
+on:
+  schedule:
+    - cron: '9-59/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Que faire ? start = (re)lancer avec les reglages ci-dessous (efface l'ancien), stop = pause, resume = reprendre, reset = effacer"
+        type: choice
+        options: [tick, start, stop, resume, reset]
+        default: tick
+      assets:
+        description: Cryptos, 1 a 3 separees par des virgules (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, LINK)
+        default: BTC
+      strategy:
+        description: Strategie
+        type: choice
+        options: [rsi, ema, dca, grid]
+        default: rsi
+      interval:
+        description: Bougies
+        type: choice
+        options: ['15m', '1h', '4h', '1d']
+        default: '1h'
+      capital:
+        description: Capital fictif en dollars
+        default: '1000'
+      fee:
+        description: Frais par ordre en %
+        default: '0.1'
+      params:
+        description: 'Reglages avances en JSON, facultatif. Ex. {"buyBelow": 35, "sellAbove": 70}'
+        default: ''
+permissions:
+  contents: write
+concurrency:
+  group: bot-serveur
+  cancel-in-progress: false
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Recupere le bot enregistre
+        run: |
+          git fetch origin bot-data --depth=1 2>/dev/null || true
+          git show origin/bot-data:bot.json > prev-bot.json 2>/dev/null || echo "premier passage"
+      - name: Fait tourner le bot
+        env:
+          BOT_ACTION: ${{ inputs.action || 'tick' }}
+          BOT_ASSETS: ${{ inputs.assets }}
+          BOT_STRATEGY: ${{ inputs.strategy }}
+          BOT_INTERVAL: ${{ inputs.interval }}
+          BOT_CAPITAL: ${{ inputs.capital }}
+          BOT_FEE: ${{ inputs.fee }}
+          BOT_PARAMS: ${{ inputs.params }}
+        run: node scripts/bot-server.mjs prev-bot.json out-bot/bot.json
+      - name: Publie bot.json sur la branche bot-data
+        run: |
+          cd out-bot
+          git init -q -b bot-data
+          git config user.name "bot-serveur"
+          git config user.email "actions@users.noreply.github.com"
+          git add bot.json
+          git commit -q -m "bot $(date -u +%Y-%m-%dT%H:%M)Z"
+          git push -f -q https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git bot-data
