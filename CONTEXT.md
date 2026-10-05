@@ -107,7 +107,7 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   minute au repos, 2 ecritures par cloture, une personne par passage et 300 bougies pour rester sous les
   10 ms de CPU de l'offre gratuite (mesure : ~2-4 ms). La page (onglet « Serveur 24 h/24 ») pilote le bot :
   /me, /start, /stop, /resume, /reset. Adresse publiee dans `bot-config.json` par le deploiement.
-  Secrets (une fois, proprietaire) : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID. Nouveau code : generer
+  Secret (une fois, proprietaire) : CLOUDFLARE_API_TOKEN (Account ID deduit du jeton). Nouveau code : generer
   16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
 - `crypto-bot-virtuel.html` et `rainbow-doge.html` : redirections vers les pages
