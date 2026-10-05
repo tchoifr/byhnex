@@ -87,16 +87,16 @@ jobs:
         if: steps.check.outputs.ok == 'true'
         working-directory: bot-worker
         run: npx --yes wrangler@4 deploy
-      - name: Verification (bot et acces a Binance depuis Cloudflare)
+      - name: Verification (bot et acces aux cours depuis Cloudflare)
         if: steps.check.outputs.ok == 'true'
         run: |
           for i in 1 2 3 4 5 6 7 8 9; do
-            H=$(curl -fsS "${{ steps.cf.outputs.url }}/health?binance" || true)
-            # Right after a deploy the previous version can still answer for a few seconds (no "binance" field).
-            if echo "$H" | jq -e '.ok and has("binance")' > /dev/null 2>&1; then
+            H=$(curl -fsS "${{ steps.cf.outputs.url }}/health?prices" || true)
+            # Right after a deploy the previous version can still answer for a few seconds (no "prices" field).
+            if echo "$H" | jq -e '.ok and has("prices")' > /dev/null 2>&1; then
               echo "Bot OK : $H"
-              if echo "$H" | jq -e '.binance' > /dev/null; then echo "Binance joignable depuis Cloudflare."; exit 0; fi
-              echo "::error::Le bot repond mais Binance refuse les serveurs Cloudflare : $H"; exit 1
+              if echo "$H" | jq -e '.prices' > /dev/null; then echo "Cours joignables depuis Cloudflare (source : $(echo "$H" | jq -r .source))."; exit 0; fi
+              echo "::error::Le bot repond mais aucune source de cours n'accepte les serveurs Cloudflare : $H"; exit 1
             fi
             sleep 10
           done
