@@ -160,6 +160,11 @@
   .server-help b { color: var(--ink); }
   .server-help p { margin: 0; }
   .server-help code { font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
+  .server-help label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .login-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .login-row input { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5,6,14,.7); color: var(--ink); padding: 0 12px; font: 600 14px 'JetBrains Mono', monospace; letter-spacing: 1px; }
+  .login-row input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .server-help .error { margin: 0 0 6px; }
   .legend .dash { height: 0; border-top: 2px dashed; border-radius: 0; background: none; }
   .price-legend { margin-top: 8px; gap: 8px 14px; }
   .ind { margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(150,160,255,.08); }
@@ -227,17 +232,15 @@
       <button class="btn primary" id="start" type="button">▶ Lancer en direct</button>
       <button class="btn" id="stop" type="button" hidden>⏸ Arrêter le bot</button>
       <button class="btn" id="reset" type="button" hidden>↺ Effacer le bot</button>
-      <a class="btn primary" id="server-config" href="https://github.com/osvalt16/byhnex/actions/workflows/bot-serveur.yml" target="_blank" rel="noopener" hidden>⚙ Régler sur GitHub</a>
-      <button class="btn" id="server-help" type="button" hidden aria-expanded="false">Comment faire ?</button>
+      <button class="btn" id="resume" type="button" hidden>▶ Reprendre</button>
+      <button class="btn" id="logout" type="button" hidden>Changer de code</button>
     </div>
-    <div class="server-help" id="server-help-box" hidden>
-      <ol>
-        <li>Touche <b>« Régler sur GitHub »</b> : la page GitHub du bot s’ouvre (connecte-toi à ton compte).</li>
-        <li>Touche <b>« Run workflow »</b>, choisis <b>action = start</b>, tes cryptos (ex. <code>BTC,SOL</code>), la stratégie, les bougies et le capital.</li>
-        <li>Valide : le bot démarre en 1 à 2 minutes puis tourne tout seul. Reviens ici pour le suivre.</li>
-      </ol>
-      <p><b>stop</b> = pause · <b>resume</b> = reprendre · <b>reset</b> = effacer. GitHub le fait passer environ toutes les 15 min à 3 h ; entre deux passages, cette page recalcule l’état avec les derniers cours, et le serveur rattrape chaque bougie au prix de clôture.</p>
-    </div>
+    <form class="server-help" id="login-box" hidden autocomplete="off">
+      <label for="code">Ton code personnel</label>
+      <div class="login-row"><input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="40"><button class="btn primary" type="submit">Se connecter</button></div>
+      <p class="error" id="login-error" role="alert"></p>
+      <p>Chacun a son propre bot, protégé par son code. Il reste mémorisé sur cet appareil.</p>
+    </form>
   </section>
 
   <section class="coins" id="coins" aria-label="Cryptos suivies par le bot"></section>
@@ -332,9 +335,9 @@ if (old?.state) {
   write(LIVE_KEY, live); write(OLD_LIVE_KEY, null);
 }
 let replay = null, candlesBy = {}, focus = prefs.assets[0], timer = null, clock = null, loadId = 0;
-// Server bot (GitHub Actions, see scripts/bot-server.mjs): read-only here, published on the bot-data branch.
-const MODE_KEY = 'byhnex-bot-mode-v1', SERVER_URL = 'https://raw.githubusercontent.com/osvalt16/byhnex/bot-data/bot.json';
-let mode = 'local', serverRaw = null, serverTimer = null, localLive = null, localPrefs = null, serverLoadId = 0;
+// Server bot: Cloudflare Worker (bot-worker/), address published in bot-config.json, one bot per personal code.
+const MODE_KEY = 'byhnex-bot-mode-v1', CODE_KEY = 'byhnex-bot-code-v1';
+let mode = 'local', serverState = 'loading', serverUrl, serverName = '', serverCode = read(CODE_KEY), serverTimer = null, localLive = null, localPrefs = null, serverLoadId = 0;
 const cache = new Map();
 
 /* ---------- settings ---------- */
@@ -418,6 +421,7 @@ async function runReplay() {
 
 /* ---------- live bot ---------- */
 async function startLive() {
+  if (mode === 'server') return startServer();
   saveForm();
   const cfg = config();
   try { validateConfig(cfg); } catch (e) { $('error').textContent = e.message; return; }
@@ -502,13 +506,13 @@ function setMode(next) {
   if (next === 'server') {
     localLive = live; localPrefs = prefs;
     clearInterval(timer); clearInterval(clock); loadId++;
-    mode = 'server'; live = null; serverRaw = undefined;
+    mode = 'server'; live = null; replay = null; serverState = 'loading';
     loadServer();
     serverTimer = setInterval(loadServer, 60000);
     clock = setInterval(renderClock, 1000);
   } else {
     clearInterval(serverTimer); clearInterval(clock); serverLoadId++;
-    mode = 'local'; live = localLive; prefs = localPrefs || prefs;
+    mode = 'local'; live = localLive; prefs = localPrefs || prefs; $('error').textContent = '';
     renderSettings();
     if (live) { renderAll(); schedule(); } else runReplay();
   }
@@ -520,20 +524,42 @@ function renderModes() {
   $('mode-local').setAttribute('aria-selected', String(mode === 'local'));
   $('mode-server').setAttribute('aria-selected', String(mode === 'server'));
 }
-// The server only passes every 15 min to 3 h; in between, the same engine replays the candles closed since,
-// so the page always shows the state the server will reach at its next pass.
+async function serverCall(path, body) {
+  const r = await fetch(serverUrl + path, {method: path === '/me' ? 'GET' : 'POST', cache: 'no-store',
+    headers: {Authorization: 'Bearer ' + serverCode, ...(body ? {'Content-Type': 'application/json'} : {})}, body: body ? JSON.stringify(body) : undefined});
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { serverCode = null; write(CODE_KEY, null); serverState = 'login'; live = null; throw Error('Code inconnu. Vérifie-le et réessaie.'); }
+  if (!r.ok) throw Error(j.error || 'Serveur indisponible, réessaie dans un instant.');
+  return j;
+}
 async function loadServer() {
   const id = ++serverLoadId;
-  try {
-    const r = await fetch(`${SERVER_URL}?t=${Math.floor(Date.now() / 60000)}`, {cache: 'no-store'});
-    if (id !== serverLoadId) return;
-    if (r.status === 404) serverRaw = null;
-    else if (!r.ok) throw Error('HTTP ' + r.status);
-    else { const j = await r.json(); serverRaw = j && j.assets ? j : null; }
-  } catch { if (id === serverLoadId && serverRaw === undefined) serverRaw = 'error'; }
+  if (!serverUrl) {
+    try { serverUrl = (await (await fetch('bot-config.json?t=' + Math.floor(Date.now() / 6e4), {cache: 'no-store'})).json()).url || null; }
+    catch { serverUrl = undefined; }
+  }
   if (id !== serverLoadId || mode !== 'server') return;
-  if (!serverRaw || serverRaw === 'error') { live = null; return renderAll(); }
-  const view = structuredClone(serverRaw), sub = subCfg(view.cfg, view.assets.length);
+  if (serverUrl === undefined) { if (!live) serverState = 'error'; return renderAll(); }
+  if (!serverUrl) { serverState = 'pending'; live = null; return renderAll(); }
+  if (!serverCode) { serverState = 'login'; live = null; return renderAll(); }
+  let me;
+  try { me = await serverCall('/me'); }
+  catch (e) { if (id === serverLoadId && mode === 'server') { if (serverState === 'login') $('login-error').textContent = e.message; else if (!live) serverState = 'error'; renderAll(); } return; }
+  if (id !== serverLoadId || mode !== 'server') return;
+  serverName = me.name || '';
+  await showServerBot(me.bot, id);
+}
+// The server decides every close; the page replays the same engine on the latest candles so the view is
+// never behind, even within the minute.
+async function showServerBot(bot, id = serverLoadId) {
+  if (!bot) {
+    const first = serverState !== 'empty';
+    serverState = 'empty'; live = null;
+    if (first) { prefs = {...(localPrefs || prefs)}; renderSettings(); runReplay(); } else renderAll();
+    return;
+  }
+  serverState = 'bot';
+  const view = structuredClone(bot), sub = subCfg(view.cfg, view.assets.length);
   view.checks ||= []; view.history ||= [];
   const got = await Promise.allSettled(view.assets.map(a => fetchCandles(a, view.interval, 500, true)));
   if (id !== serverLoadId || mode !== 'server') return;
@@ -549,22 +575,34 @@ async function loadServer() {
   });
   view.checkedAt = Date.now();
   live = view;
-  if (!live.stopped) { const {bot, hold} = liveTotals(); live.history = [...live.history, {t: Date.now(), bot, hold}]; }
+  if (!live.stopped) { const {bot: value, hold} = liveTotals(); live.history = [...live.history, {t: Date.now(), bot: value, hold}]; }
   prefs = {...(localPrefs || prefs), assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}};
   if (!live.assets.includes(focus)) focus = live.assets[0];
   renderSettings();
   renderAll();
 }
+async function serverAction(button, label, path, body) {
+  const el = $(button), text = el.textContent;
+  el.disabled = true; el.textContent = label; $('error').textContent = '';
+  const id = ++serverLoadId;
+  try { const j = await serverCall(path, body); await showServerBot(j.bot, id); }
+  catch (e) { $('error').textContent = e.message; renderAll(); }
+  el.disabled = false; el.textContent = text;
+}
+function startServer() {
+  saveForm();
+  const cfg = config();
+  try { validateConfig(cfg); } catch (e) { $('error').textContent = e.message; return; }
+  return serverAction('start', 'Démarrage…', '/start', {assets: prefs.assets, interval: prefs.interval, strategy: cfg.strategy, params: cfg.params, capital: cfg.capital, fee: cfg.fee});
+}
 
 function renderClock() {
   if (!live) { $('clock').textContent = ''; return; }
   if (live.server) {
-    const mins = Math.max(0, Math.round((Date.now() - live.updatedAt) / 6e4));
-    const pass = mins < 1 ? 'à l’instant' : mins < 120 ? `il y a ${mins} min` : `il y a ${Math.round(mins / 60)} h`;
-    if (live.stopped) { $('clock').textContent = `Serveur en pause · dernier passage ${pass}.`; return; }
+    if (live.stopped) { $('clock').textContent = 'Serveur en pause : il ne prend plus de décision.'; return; }
     const step = STEP[live.interval], left = Math.ceil(Date.now() / step) * step - Date.now();
     const h = Math.floor(left / 36e5), m = Math.floor(left % 36e5 / 6e4), s = Math.floor(left % 6e4 / 1000), two = v => String(v).padStart(2, '0');
-    $('clock').innerHTML = `<span class="pulse"></span>Prochaine clôture dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · serveur passé ${pass}`;
+    $('clock').innerHTML = `<span class="pulse"></span>Prochaine décision dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · serveur actif 24 h/24`;
     return;
   }
   const ago = Math.max(0, Math.round((Date.now() - live.checkedAt) / 1000));
@@ -578,21 +616,24 @@ function renderClock() {
 function renderAll() {
   const running = live && !live.stopped;
   document.querySelector('.bot').classList.toggle('running', !!running);
-  const srv = mode === 'server';
-  $('start').hidden = !!live || srv; $('stop').hidden = !running || srv; $('reset').hidden = !live || srv;
-  $('server-config').hidden = !srv; $('server-help').hidden = !srv;
-  if (!srv) $('server-help-box').hidden = true;
-  for (const el of $('settings').elements) el.disabled = !!live || srv;
+  const srv = mode === 'server', st = serverState, ready = !srv || st === 'empty';
+  $('start').hidden = !!live || !ready;
+  if (!$('start').disabled) $('start').textContent = srv ? '▶ Lancer sur le serveur' : '▶ Lancer en direct';
+  $('stop').hidden = !running; $('reset').hidden = !live;
+  $('resume').hidden = !(srv && live && live.stopped);
+  $('logout').hidden = !(srv && (st === 'bot' || st === 'empty'));
+  $('login-box').hidden = !(srv && st === 'login');
+  for (const el of $('settings').elements) el.disabled = !!live || !ready;
   lockAssets();
   const assets = live ? live.assets : prefs.assets;
   if (!assets.includes(focus)) focus = assets[0];
   if (live) return renderLive();
   renderClock();
-  if (srv) return renderServerEmpty();
-  $('status-title').textContent = 'Bot en veille';
+  if (!ready) return renderServerEmpty();
+  $('status-title').textContent = srv ? `Serveur · prêt${serverName ? ' (' + serverName + ')' : ''}` : 'Bot en veille';
   if (!replay) { $('status-text').textContent = $('error').textContent ? 'Les cours ne sont pas disponibles pour l’instant : le bot ne peut ni rejouer ni démarrer. Recharge la page dans un instant.' : 'Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.'; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', 'Aucun résultat pour l’instant.'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
   const s = replay.stats, names = Object.keys(replay.assets), first = new Date(replay.equity[0].t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
-  $('status-text').textContent = `Rejoué sur ${replay.equity.length} bougies ${prefs.interval} de ${names.join(', ')} depuis le ${first}${names.length > 1 ? `, ${usd(replay.cfg.capital / names.length)} par crypto` : ''}. Si le résultat te plaît, lance-le en direct : il décide dès la dernière clôture.`;
+  $('status-text').textContent = `Rejoué sur ${replay.equity.length} bougies ${prefs.interval} de ${names.join(', ')} depuis le ${first}${names.length > 1 ? `, ${usd(replay.cfg.capital / names.length)} par crypto` : ''}. ${srv ? 'Si le résultat te plaît, lance-le sur le serveur : il tournera 24 h/24, même application fermée.' : 'Si le résultat te plaît, lance-le en direct : il décide dès la dernière clôture.'}`;
   $('pnl-label').textContent = 'Résultat rejoué';
   $('pnl').innerHTML = `<span class="${cls(s.pct)}">${pct(s.pct)}</span>`;
   const sub = subCfg(replay.cfg, names.length);
@@ -607,13 +648,17 @@ function renderAll() {
   renderEquity(replay.equity);
 }
 function renderServerEmpty() {
-  const loading = serverRaw === undefined, failed = serverRaw === 'error';
-  $('status-title').textContent = loading ? 'Connexion au serveur…' : failed ? 'Serveur injoignable' : 'Bot serveur pas encore lancé';
-  $('status-text').textContent = loading ? 'Lecture du bot qui tourne sur GitHub.' : failed ? 'Impossible de lire le bot serveur pour l’instant. Nouvel essai dans une minute.' :
-    'Ce bot tourne sur GitHub 24 h/24, même quand l’application est fermée. Lance-le une fois depuis GitHub : touche « Comment faire ? ».';
+  const text = {
+    loading: ['Connexion au serveur…', 'Lecture de ton bot 24 h/24.'],
+    pending: ['Serveur en cours d’installation', 'Le bot 24 h/24 tourne sur Cloudflare. Il sera disponible ici dès que l’installation sera terminée.'],
+    login: ['Entre ton code personnel', 'Ce bot tourne 24 h/24 sur le serveur, même application fermée. Tape ton code une fois pour retrouver ton bot.'],
+    error: ['Serveur injoignable', 'Impossible de joindre le serveur pour l’instant. Nouvel essai dans une minute.'],
+  }[serverState] || ['Serveur', ''];
+  $('status-title').textContent = text[0];
+  $('status-text').textContent = text[1];
   $('pnl-label').textContent = 'Portefeuille fictif'; $('pnl').textContent = '—';
   $('coins').innerHTML = ''; renderTiles(null);
-  renderJournal([], 'Journal du bot serveur', 'Le journal se remplira dès le premier passage du serveur.');
+  renderJournal([], 'Journal du bot serveur', 'Le journal se remplira dès que ton bot serveur sera lancé.');
   $('price-plot').innerHTML = ''; $('ind-plot').hidden = true; $('price-legend').innerHTML = ''; $('price-tabs').innerHTML = '';
   $('equity-plot').innerHTML = ''; $('equity-table').innerHTML = '';
 }
@@ -623,8 +668,8 @@ function renderLive() {
   const state = live.stopped ? 'en pause' : open.length ? `en position sur ${open.join(', ')}` : `attend le signal sur ${live.assets.join(', ')}`;
   $('status-title').textContent = live.server ? 'Serveur · ' + state : live.stopped ? 'Bot en pause' : 'Actif · ' + state;
   $('status-text').textContent = live.error || (live.server ?
-    (live.stopped ? 'Le bot serveur est en pause, son portefeuille fictif est conservé. Pour le reprendre : « Régler sur GitHub », action resume.' :
-      `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Tourne sur GitHub depuis le ${when(live.startedAt)}, même application fermée.`) :
+    (live.stopped ? 'Ton bot serveur est en pause, son portefeuille fictif est conservé. Touche « Reprendre » pour le relancer.' :
+      `${serverName ? serverName + ' · ' : ''}${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Tourne sur le serveur depuis le ${when(live.startedAt)}, même application fermée.`) :
     live.stopped ? 'Le portefeuille fictif est conservé. Efface le bot pour en lancer un autre.' :
     `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Lancé le ${when(live.startedAt)}. Il décide à chaque clôture de bougie et suit les cours chaque minute.`);
   renderClock();
@@ -645,9 +690,9 @@ function renderLive() {
   if ((live.history || []).length >= 2) {
     // The curve is only sampled while the page is open: a long gap is drawn as a break, not as a straight line.
     const eq = [], h = live.history;
-    h.forEach((e, i) => { if (i && e.t - h[i - 1].t > (live.server ? 5 * 36e5 : 180000)) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
+    h.forEach((e, i) => { if (i && e.t - h[i - 1].t > (live.server ? 2.5 * STEP[live.interval] : 180000)) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
     renderEquity(eq);
-    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', `<p class="hint">${live.server ? 'Ligne coupée : le serveur GitHub n’est pas passé pendant plusieurs heures. Il a rattrapé les bougies manquées au passage suivant.' : 'Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.'}</p>`);
+    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', `<p class="hint">${live.server ? 'Ligne coupée : le serveur n’a pas pu joindre Binance pendant un moment. Il a rattrapé les bougies manquées ensuite.' : 'Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.'}</p>`);
   }
   else { $('equity-plot').innerHTML = '<p class="empty">La courbe se remplit à chaque vérification des cours (toutes les minutes) tant que la page est ouverte.</p>'; $('equity-table').innerHTML = ''; }
 }
@@ -808,9 +853,16 @@ $('coins').addEventListener('click', e => { const b = e.target.closest('.coin');
 $('start').addEventListener('click', startLive);
 $('mode-local').addEventListener('click', () => setMode('local'));
 $('mode-server').addEventListener('click', () => setMode('server'));
-$('server-help').addEventListener('click', () => { const box = $('server-help-box'); box.hidden = !box.hidden; $('server-help').setAttribute('aria-expanded', String(!box.hidden)); });
-$('stop').addEventListener('click', stopLive);
-$('reset').addEventListener('click', resetLive);
+$('login-box').addEventListener('submit', e => {
+  e.preventDefault();
+  const code = $('code').value.trim();
+  if (code.replace(/[^A-Za-z0-9]/g, '').length < 12) { $('login-error').textContent = 'Le code fait 16 caractères, par exemple ABCD-EFGH-JKMN-PQRS.'; return; }
+  serverCode = code; write(CODE_KEY, code); $('login-error').textContent = ''; serverState = 'loading'; renderAll(); loadServer();
+});
+$('logout').addEventListener('click', () => { serverCode = null; write(CODE_KEY, null); live = null; replay = null; serverState = 'login'; $('code').value = ''; renderAll(); });
+$('stop').addEventListener('click', () => mode === 'server' ? serverAction('stop', 'Pause…', '/stop') : stopLive());
+$('resume').addEventListener('click', () => serverAction('resume', 'Reprise…', '/resume'));
+$('reset').addEventListener('click', () => { if (mode !== 'server') return resetLive(); if (confirm('Effacer ton bot serveur ? Son portefeuille fictif sera perdu.')) serverAction('reset', 'Effacement…', '/reset'); });
 $('table-toggle').addEventListener('click', () => { const open = $('equity-table').hidden; $('equity-table').hidden = !open; $('table-toggle').setAttribute('aria-expanded', String(open)); $('table-toggle').textContent = open ? 'Masquer le tableau' : 'Voir les chiffres en tableau'; });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 200); });
 if (read(MODE_KEY) === 'server') { if (live) { prefs = {...prefs, assets: live.assets, interval: live.interval, strategy: live.cfg.strategy, capital: live.cfg.capital, fee: live.cfg.fee, params: {...prefs.params, [live.cfg.strategy]: live.cfg.params}}; } setMode('server'); }

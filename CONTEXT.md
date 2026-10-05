@@ -99,14 +99,16 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   Secrets (une fois, proprietaire) : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DISPATCH_TOKEN.
   Les positions Coinbase ne vont jamais dans ces notifications publiques. `sw.js` affiche les
   notifications ; il n'a volontairement aucun gestionnaire `fetch` (pas de donnees en cache).
-- `scripts/bot-server.mjs` + `.github/workflows/bot-serveur.yml` : bot virtuel « serveur » 24 h/24
-  (argent fictif, aucune cle, aucun ordre reel). Meme moteur que la page (`bot-engine.js`).
-  Cron toutes les 15 min (GitHub le fait passer en pratique toutes les 15 min a ~3 h) ; chaque passage
-  decide toutes les bougies cloturees depuis le precedent. Etat publie dans `bot.json` sur la
-  branche `bot-data` (force-push, un seul commit), lu par la page via raw.githubusercontent.com.
-  Reglages : Actions > Bot serveur > Run workflow (action start/stop/resume/reset, cryptos, strategie,
-  bougies, capital, frais, reglages avances en JSON). La page (onglet « Serveur 24 h/24 ») est en
-  lecture seule et recalcule l'etat entre deux passages avec les derniers cours.
+- `bot-worker/` (Cloudflare Workers, offre gratuite) + `.github/workflows/bot-cloudflare.yml` : bot virtuel
+  24 h/24 (argent fictif, aucune cle d'exchange, aucun ordre reel). Meme moteur que la page (`bot-engine.js`),
+  logique pure dans `bot-worker/bot-core.js`. Un bot prive par personne (« Moi », « Collègue »), deverrouille
+  par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Cron chaque minute, mais travail
+  uniquement a la cloture d'une bougie (cle KV `index` = prochaine echeance par personne) : 1 lecture KV par
+  minute au repos, 2 ecritures par cloture, une personne par passage et 300 bougies pour rester sous les
+  10 ms de CPU de l'offre gratuite (mesure : ~2-4 ms). La page (onglet « Serveur 24 h/24 ») pilote le bot :
+  /me, /start, /stop, /resume, /reset. Adresse publiee dans `bot-config.json` par le deploiement.
+  Secrets (une fois, proprietaire) : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID. Nouveau code : generer
+  16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.
 - `crypto-bot-virtuel.html` et `rainbow-doge.html` : redirections vers les pages
   renommees, conservees pour les anciens liens et notifications deja envoyees.

@@ -1,21 +1,16 @@
-// Bot virtuel « serveur » : tourne sur GitHub Actions, même application fermée.
-// Argent fictif uniquement : aucune clé, aucun ordre réel. Même moteur que la page (bot-engine.js),
-// donc les décisions sont identiques à celles du bot de l'appareil.
-// Usage : node scripts/bot-server.mjs <état précédent.json> <nouvel état.json>
-// Réglages (workflow_dispatch) : BOT_ACTION=tick|start|stop|resume|reset, BOT_ASSETS, BOT_STRATEGY,
-// BOT_INTERVAL, BOT_CAPITAL, BOT_FEE, BOT_PARAMS (JSON).
-import fs from 'node:fs';
-import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+// Bot virtuel « serveur » : logique du Worker Cloudflare (bot-worker/byhnex-bot.js).
+// Pure : aucun accès réseau ni disque.
+// Argent fictif uniquement, même moteur que la page (bot-engine.js).
 import {STRATEGIES, runBot, newBot, equityOf, validateConfig} from '../bot-engine.js';
 
 export const ASSETS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'LINK'];
 export const INTERVALS = ['15m', '1h', '4h', '1d'];
 const MAX_HISTORY = 3000, MAX_CHECKS = 300;
 
-// Reads the settings typed in the GitHub form; refuses anything the page could not run either.
+// Reads the settings sent by the page; refuses anything the page could not run either.
 export function readSettings(env) {
-  const assets = [...new Set(String(env.BOT_ASSETS || 'BTC').toUpperCase().split(/[\s,;]+/).filter(Boolean))];
+  const list = Array.isArray(env.BOT_ASSETS) ? env.BOT_ASSETS.join(',') : String(env.BOT_ASSETS || 'BTC');
+  const assets = [...new Set(list.toUpperCase().split(/[\s,;]+/).filter(Boolean))];
   if (!assets.length || assets.length > 3) throw Error('Choisis 1 à 3 cryptos.');
   for (const a of assets) if (!ASSETS.includes(a)) throw Error(`Crypto inconnue : ${a} (choix : ${ASSETS.join(', ')}).`);
   const interval = env.BOT_INTERVAL || '1h';
@@ -23,7 +18,8 @@ export function readSettings(env) {
   const strategy = env.BOT_STRATEGY || 'rsi';
   if (!STRATEGIES[strategy]) throw Error('Stratégie : rsi, ema, dca ou grid.');
   let params = {};
-  if (env.BOT_PARAMS && env.BOT_PARAMS.trim()) {
+  if (env.BOT_PARAMS && typeof env.BOT_PARAMS === 'object') params = {...env.BOT_PARAMS};
+  else if (env.BOT_PARAMS && String(env.BOT_PARAMS).trim()) {
     try { params = JSON.parse(env.BOT_PARAMS); } catch { throw Error('Réglages avancés : JSON invalide, ex. {"buyBelow": 35}.'); }
     for (const k of Object.keys(params)) if (!(k in STRATEGIES[strategy].defaults)) throw Error(`Réglage inconnu pour ${strategy} : ${k}.`);
   }
@@ -85,45 +81,24 @@ export function tickBot(bot, market, now) {
   return bot;
 }
 
-async function fetchMarket(assets, interval) {
-  const market = {};
-  for (const a of assets) {
-    try {
-      const r = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${a}USDT&interval=${interval}&limit=500`, {headers: {'User-Agent': 'byhnex-bot'}});
-      if (!r.ok) throw Error('HTTP ' + r.status);
-      const rows = await r.json(), now = Date.now();
-      const candles = rows.filter(k => k[6] <= now).map(k => ({openTime: k[0], closeTime: k[6], close: +k[4]})).filter(c => c.close > 0);
-      if (!candles.length) throw Error('vide');
-      market[a] = {candles, price: +rows.at(-1)[4] || candles.at(-1).close};
-    } catch (e) { console.log(`${a} : cours indisponibles (${e.message})`); }
-  }
-  return market;
+
+export const STEP = {'15m': 9e5, '1h': 36e5, '4h': 144e5, '1d': 864e5};
+// Close time of the last candle that has closed at `now` (Binance: closeTime = openTime + step - 1).
+export const lastClose = (interval, now) => Math.floor(now / STEP[interval]) * STEP[interval] - 1;
+// When the bot next has something to decide: right away after a resume, else at the next candle close
+// (plus a short delay so Binance has published it). A paused bot never needs a pass.
+export function nextDue(bot, now) {
+  if (!bot || bot.stopped) return null;
+  if (bot.resume) return now;
+  const done = Math.min(...bot.assets.map(a => bot.states[a].lastTime));
+  const step = STEP[bot.interval];
+  return done < lastClose(bot.interval, now) ? now : Math.floor(now / step) * step + step + 20000;
 }
 
-async function main([prevFile, outFile]) {
-  const env = process.env, action = env.BOT_ACTION || 'tick', now = Date.now();
-  let bot = null;
-  try { bot = JSON.parse(fs.readFileSync(prevFile, 'utf8')); } catch { console.log('Pas de bot serveur enregistré.'); }
-  if (bot && !bot.server) bot = null;
-  if (action === 'reset') bot = null;
-  else if (action === 'start') {
-    const settings = readSettings(env), market = await fetchMarket(settings.assets, settings.interval);
-    const missing = settings.assets.filter(a => !market[a]);
-    if (missing.length) throw Error(`Impossible de démarrer : cours ${missing.join(', ')} indisponibles.`);
-    bot = startBot(settings, market, now);
-  } else if (bot) {
-    if (action === 'stop') bot.stopped = true;
-    if (action === 'resume' && bot.stopped) { bot.stopped = false; bot.resume = true; }
-    bot = tickBot(bot, await fetchMarket(bot.assets, bot.interval), now);
-  }
-  fs.mkdirSync(path.dirname(outFile), {recursive: true});
-  fs.writeFileSync(outFile, JSON.stringify(bot ? bot : {server: true, empty: true, updatedAt: now}));
-  if (bot) {
-    const trades = bot.assets.reduce((n, a) => n + bot.states[a].trades.length, 0);
-    console.log(`Bot serveur ${bot.stopped ? 'en pause' : 'actif'} : ${bot.assets.join(', ')} · ${bot.cfg.strategy} · ${bot.interval} · ${trades} ordre(s) fictif(s) · passage n°${bot.runs}`);
-  } else console.log('Aucun bot serveur actif.');
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2)).catch(e => { console.error(e.message); process.exit(1); });
+// Turns Binance klines rows into closed candles plus the live price.
+export function parseKlines(rows, now) {
+  const candles = [];
+  for (const k of rows) if (k[6] <= now) { const close = +k[4]; if (close > 0) candles.push({openTime: k[0], closeTime: k[6], close}); }
+  if (!candles.length) throw Error('Binance vide');
+  return {candles, price: +rows.at(-1)[4] || candles.at(-1).close};
 }

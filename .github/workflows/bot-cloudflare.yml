@@ -1,0 +1,99 @@
+name: Bot Cloudflare
+# Deploie bot-worker/ sur Cloudflare Workers (offre gratuite) : bot virtuel 24 h/24, argent fictif.
+# Secrets requis (une seule fois, proprietaire) : CLOUDFLARE_API_TOKEN (modele « Edit Cloudflare Workers »)
+# et CLOUDFLARE_ACCOUNT_ID. Publie l'adresse du bot dans bot-config.json pour le site.
+on:
+  push:
+    branches: [main]
+    paths: ['bot-worker/**', 'bot-engine.js', '.github/workflows/bot-cloudflare.yml']
+  workflow_dispatch:
+    inputs:
+      cf_token:
+        description: "Jeton Cloudflare temporaire (si les secrets n'existent pas encore). Il reste lisible dans ce run : utiliser un jeton qui expire."
+        default: ''
+      cf_account:
+        description: Account ID Cloudflare (facultatif, deduit du jeton sinon)
+        default: ''
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: bot-cloudflare
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secrets presents ?
+        id: check
+        env:
+          IN_TOKEN: ${{ inputs.cf_token }}
+          IN_ACCOUNT: ${{ inputs.cf_account }}
+          SECRET_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SECRET_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          CLOUDFLARE_API_TOKEN="${SECRET_TOKEN:-$IN_TOKEN}"
+          CLOUDFLARE_ACCOUNT_ID="${SECRET_ACCOUNT:-$IN_ACCOUNT}"
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "::add-mask::$CLOUDFLARE_API_TOKEN"; fi
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            CLOUDFLARE_ACCOUNT_ID=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts" | jq -r '.result[0].id // empty')
+          fi
+          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID manquants : deploiement ignore."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          node-version: 22
+      - name: Tests du moteur
+        if: steps.check.outputs.ok == 'true'
+        run: npm test
+      - name: Espace de stockage KV et sous-domaine workers.dev
+        if: steps.check.outputs.ok == 'true'
+        id: cf
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          KV_ID=$(curl -fsS -H "$AUTH" "$API/storage/kv/namespaces?per_page=100" | jq -r '.result[] | select(.title=="byhnex-bot") | .id' | head -n1)
+          if [ -z "$KV_ID" ]; then
+            KV_ID=$(curl -fsS -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"title":"byhnex-bot"}' "$API/storage/kv/namespaces" | jq -r '.result.id')
+          fi
+          test -n "$KV_ID" && test "$KV_ID" != "null"
+          SUB=$(curl -sS -H "$AUTH" "$API/workers/subdomain" | jq -r '.result.subdomain // empty')
+          if [ -z "$SUB" ]; then
+            SUB="byhnex-$(echo "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-6)"
+            curl -fsS -X PUT -H "$AUTH" -H "Content-Type: application/json" -d "{\"subdomain\":\"$SUB\"}" "$API/workers/subdomain" > /dev/null
+          fi
+          sed -i "s/__KV_ID__/$KV_ID/" bot-worker/wrangler.toml
+          echo "url=https://byhnex-bot.$SUB.workers.dev" >> "$GITHUB_OUTPUT"
+      - name: Deploiement du bot
+        if: steps.check.outputs.ok == 'true'
+        working-directory: bot-worker
+        run: npx --yes wrangler@4 deploy
+      - name: Verification
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9; do
+            if curl -fsS "${{ steps.cf.outputs.url }}/health" | jq -e '.ok' > /dev/null; then echo "bot OK"; exit 0; fi
+            sleep 10
+          done
+          echo "Le bot ne repond pas encore (le premier sous-domaine workers.dev peut prendre quelques minutes)"; exit 1
+      - name: Publie l'adresse du bot pour le site
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          echo "{\"url\": \"${{ steps.cf.outputs.url }}\"}" > bot-config.json
+          if git diff --quiet -- bot-config.json; then echo "adresse inchangee"; exit 0; fi
+          git config user.name "bot-cloudflare"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "chore(bot): adresse du bot Cloudflare" -- bot-config.json
+          git push
+          # un push fait avec GITHUB_TOKEN ne relance pas les workflows : on redeploie le site explicitement
+          curl -fsS -X POST -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/pages.yml/dispatches" -d '{"ref":"main"}'
