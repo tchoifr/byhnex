@@ -310,3 +310,32 @@ body.bn-graph-page{--bg:#05060e;--panel:rgba(16,19,40,.62);--border:rgba(150,160
   .home-foot{font-size:10.5px}
 }
 @media(prefers-reduced-motion:reduce){.home-tool{transition:none}}
+
+/* Accumulation: lab, cycles journal and HOLD comparison share one side column. */
+.bn-graph-page .side-col{display:contents}
+/* PC (≥ 1280 × 740): one screen, no page scroll; the chart takes the room left, the side column scrolls. */
+@media(min-width:1280px) and (min-height:740px){
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .content{height:calc(100vh - 62px);height:calc(100dvh - 62px);box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:14px 24px 8px;overflow:hidden}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .heading{margin:0;flex:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .heading h1{font-size:24px;margin:0}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .heading .eyebrow,body.bn-graph-page:not(.embed):not(.chart-expanded) .heading p.muted{display:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .metrics{margin:0;flex:none;gap:12px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .metric{padding:12px 16px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .metric-value{margin:6px 0 4px;font-size:22px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .market-layout{flex:1;min-height:0;align-items:stretch;grid-template-columns:minmax(0,1fr) clamp(300px,24vw,370px);gap:14px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-panel{display:flex;flex-direction:column;min-height:0}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-body{flex:1;min-height:0}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) #chart{height:100%!important;min-height:180px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) #tools{max-height:100%;overflow-y:auto;scrollbar-width:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .side-col{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;scrollbar-width:thin;padding-right:2px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .side-col>.panel{flex:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .side-col .table-wrap{overflow-x:auto}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-note,body.bn-graph-page:not(.embed):not(.chart-expanded) #chart-hint,body.bn-graph-page:not(.embed):not(.chart-expanded) .lab>p.muted,body.bn-graph-page:not(.embed):not(.chart-expanded) .lab-footnote,body.bn-graph-page:not(.embed):not(.chart-expanded) .benchmark-note{display:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .content>footer{flex:none;padding:4px 0 0;margin:0}
+}
+@media(min-width:1280px) and (min-height:740px) and (max-height:880px){
+  body.bn-graph-page:not(.embed):not(.chart-expanded) #ohlc,body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-legend,body.bn-graph-page:not(.embed):not(.chart-expanded) .heading{display:none}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .metric-label+*{margin-top:2px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-heading{padding-top:10px;padding-bottom:6px}
+  body.bn-graph-page:not(.embed):not(.chart-expanded) .chart-price strong{font-size:24px}
+}
