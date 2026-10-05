@@ -16,6 +16,8 @@ Objectif : chaque page d'origine (racine du dépôt) est réécrite en Vue 3 + T
 | Barre latérale | `sidebar.js`, `sidebar.css` | À faire en dernier (utilisée par toutes les pages) |
 | Redirections | `positionnement.html`, `rainbow-*.html`, `saisonnalite-btc.html`, `crypto-bot-virtuel.html` | À remplacer par des redirections 301 dans `deploy/htaccess` |
 
+**Les changements d'osvalt16 passent toujours en premier.** `deploy/migrated-pages.json` garde l'empreinte de la version d'origine que chaque page Vue reproduit. Si osvalt16 modifie la page d'origine, l'empreinte ne correspond plus et le build publie sa version telle quelle, avec un avertissement dans GitHub Actions, jusqu'à ce que la page Vue soit mise à jour : reporter ses changements, faire passer la parité visuelle, puis `node deploy/migrated-pages.mjs --accept`. Une empreinte vide signifie « page Vue pas encore validée : version d'origine publiée » (cas de l'accueil depuis la refonte d'osvalt16 du 5 octobre).
+
 Tant qu'une page d'origine sert de référence au test de parité, **elle reste dans le dépôt** : si elle change (correctif d'osvalt16 par exemple), le test échoue et signale que la version Vue doit suivre.
 
 ## Procédure pour une page

@@ -20,6 +20,7 @@ Tout push sur `main` (direct ou par fusion de PR) est testé puis déployé auto
 | `PROD_SSH_USER` | identifiant FTP/SSH principal |
 | `PROD_WEB_DIR` | `www` |
 | `PROD_SSH_PASSWORD` | mot de passe SSH (ou `PROD_SSH_KEY`, clé privée dédiée, recommandé) |
+| `SYNC_TOKEN` | jeton fin limité à `tchoifr/byhnex` (Contents et Workflows en lecture/écriture), pour fusionner automatiquement les commits d'osvalt16 |
 
 L'empreinte du serveur est fixée dans `deploy/known_hosts` : la CI refuse tout autre serveur.
 

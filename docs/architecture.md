@@ -47,4 +47,4 @@ Déploiement : `.github/workflows/deploy-prod.yml` (voir [deploy/README.md](../d
 ## Dépôts
 
 - `tchoifr/byhnex` : fork de travail ; `main` est déployé sur byhnex.com.
-- `osvalt16/byhnex` : dépôt d'origine (GitHub Pages, bots). La migration lui est proposée ; en attendant, la synchronisation automatique est coupée.
+- `osvalt16/byhnex` : dépôt d'origine (GitHub Pages, bots). Ses commits sont fusionnés automatiquement toutes les 10 minutes dans `main` (`.github/workflows/sync-upstream.yml`, sa version gagne en cas de conflit) puis déployés sur byhnex.com.

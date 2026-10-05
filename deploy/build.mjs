@@ -8,6 +8,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { outdatedPages } from './migrated-pages.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const legacyOnly = process.argv.includes('--legacy')
@@ -40,9 +41,15 @@ const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
 const accountEntry = Object.values(manifest).find((chunk) => chunk.isEntry && chunk.name === 'account')
 if (!accountEntry) throw Error('Bundle du compte introuvable dans le manifeste Vite.')
 const vuePages = []
+const outdated = outdatedPages()
 fs.cpSync(path.join(front, 'assets'), path.join(out, 'assets'), { recursive: true })
 if (!legacyOnly) {
   for (const file of fs.readdirSync(front).filter((f) => f.endsWith('.html'))) {
+    // The original changed since the Vue page was checked: publish the original until the Vue page catches up.
+    if (outdated.includes(file)) {
+      console.log(`::warning title=Page Vue à mettre à jour::${file} : la version d’origine a changé, elle est publiée à la place de la version Vue (voir docs/migration.md).`)
+      continue
+    }
     fs.copyFileSync(path.join(front, file), path.join(out, file))
     vuePages.push(file)
   }
@@ -68,4 +75,4 @@ fs.copyFileSync(path.join(root, 'deploy', 'api', 'index.php'), path.join(out, 'a
 fs.copyFileSync(path.join(root, 'deploy', 'api', 'htaccess'), path.join(out, 'api', '.htaccess'))
 fs.writeFileSync(path.join(out, 'version.txt'), version + '\n')
 
-console.log(`Build ${legacyOnly ? 'de référence (sans Vue)' : 'de production'} ${version} : ${pages} pages, Vue : ${vuePages.join(', ') || 'aucune'}.`)
+console.log(`Build ${legacyOnly ? 'de référence (sans Vue)' : 'de production'} ${version} : ${pages} pages, Vue : ${vuePages.join(', ') || 'aucune'}${!legacyOnly && outdated.length ? ` ; version d’origine publiée pour ${outdated.join(', ')}` : ''}.`)

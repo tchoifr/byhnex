@@ -1,0 +1,44 @@
+name: Changements d'osvalt16 en production
+
+# Every 10 minutes: merges osvalt16/byhnex main into this repository's main, then the push deploys to
+# byhnex.com (deploy-prod.yml). On a conflict, osvalt16's version wins.
+# Needs the SYNC_TOKEN secret: fine-grained token limited to tchoifr/byhnex, Contents and Workflows
+# in read and write (the default token may not push changes to workflow files).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'tchoifr/byhnex'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Jeton de synchronisation
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: test -n "$SYNC_TOKEN" || { echo "::error::Secret SYNC_TOKEN absent (voir deploy/README.md)."; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+      - name: Fusion de osvalt16/byhnex
+        run: |
+          git config user.name "byhnex-sync"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/osvalt16/byhnex.git
+          git fetch --quiet upstream main
+          count=$(git rev-list --count HEAD..upstream/main)
+          if [ "$count" = "0" ]; then echo "Rien de nouveau chez osvalt16."; exit 0; fi
+          echo "$count nouveau(x) commit(s) d'osvalt16 :"
+          git log --oneline HEAD..upstream/main
+          git merge --no-edit -X theirs upstream/main -m "chore(sync): changements d'osvalt16 ($count commits)"
+          git push origin HEAD:main

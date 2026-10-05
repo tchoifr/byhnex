@@ -27,6 +27,10 @@ Détails : [docs/architecture.md](docs/architecture.md). État de la migration :
 6. **Toujours afficher « Pas un conseil financier »** là où des analyses ou simulations sont présentées.
 7. **Pas de nouvelle fonctionnalité dans les pages d'origine** (racine). Le nouveau code va dans `frontend/` ou `backend/`. Seuls les correctifs urgents sont tolérés à la racine, et ils doivent aussi être reportés dans la version Vue si la page est migrée.
 
+## 2 bis. Travail d'osvalt16
+
+osvalt16 continue de développer les pages d'origine dans `osvalt16/byhnex`. Ses commits sont fusionnés automatiquement dans `main` toutes les 10 minutes et partent en production ; **sa version gagne toujours**. Ne jamais annuler ni réécrire ses changements. Une page Vue dont l'original a changé est remplacée automatiquement par sa version jusqu'à mise à jour (voir [docs/migration.md](docs/migration.md)).
+
 ## 3. Méthode de travail
 
 1. Partir de `main` à jour : `git switch main && git pull`.

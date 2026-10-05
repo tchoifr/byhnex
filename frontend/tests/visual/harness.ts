@@ -31,6 +31,15 @@ export async function prepare(page: Page, fixture: string, record = false): Prom
   page.on('request', () => inFlight.set(page, (inFlight.get(page) ?? 0) + 1))
   page.on('requestfinished', done)
   page.on('requestfailed', done)
+  // Infinite CSS animations (pulsing "live" dot…) keep composited layers whose rasterisation depends on
+  // when they started; both versions are compared at rest, without animations nor transitions.
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style')
+      style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'
+      document.head.append(style)
+    })
+  })
   await page.clock.install({ time: FIXED_TIME })
   // Without a pause the fake clock still follows real time; paused, it only moves with runFor().
   await page.clock.pauseAt(new Date(FIXED_TIME.getTime() + 1000))

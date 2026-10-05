@@ -20,6 +20,8 @@ export default defineConfig({
     locale: 'fr-FR',
     timezoneId: 'Europe/Paris',
     colorScheme: 'dark',
+    // Same rasterisation whatever the layer layout: grayscale text smoothing, sRGB colours.
+    launchOptions: { args: ['--disable-lcd-text', '--force-color-profile=srgb', '--font-render-hinting=none'] },
   },
   projects: [
     { name: 'parity', testMatch: /parity\.spec\.ts/ },
