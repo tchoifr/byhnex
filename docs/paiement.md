@@ -118,3 +118,7 @@ Ces journaux ne contiennent jamais l'URL du RPC (elle porte la clé), aucun secr
 
 - Un code d'accès au bot reste lisible jusqu'à la fin de la période payée, même si le compte est supprimé entre-temps. Il ne donne accès qu'au bot de ce compte, en argent fictif.
 - Seuls les wallets compatibles Wallet Standard avec `solana:signAndSendTransaction` sont proposés. Les autres passent par le QR code.
+
+## Accès offert
+
+Le compte du propriétaire (id 5 sur byhnex.com) a un abonnement permanent, jusqu'au 31 décembre 2099. Il est créé par la migration `Version20261005200000`. Pour offrir l'accès à un autre compte, écrire une nouvelle migration du même modèle : jamais depuis la page.
