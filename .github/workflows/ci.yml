@@ -1,6 +1,6 @@
 name: CI
 
-# Required checks for every Pull Request to main, and reused before each production deployment.
+# Checks for Pull Requests, and run before every production deployment (push to main).
 on:
   pull_request:
     branches: [main]

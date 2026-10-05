@@ -1,6 +1,6 @@
 # Production byhnex.com
 
-Tout merge dans `main` est testé puis déployé automatiquement par `.github/workflows/deploy-prod.yml`. Architecture : [docs/architecture.md](../docs/architecture.md).
+Tout push sur `main` (direct ou par fusion de PR) est testé puis déployé automatiquement par `.github/workflows/deploy-prod.yml`. Architecture : [docs/architecture.md](../docs/architecture.md).
 
 ## Ce que fait le déploiement
 

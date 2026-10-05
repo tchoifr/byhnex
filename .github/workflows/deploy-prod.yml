@@ -1,6 +1,6 @@
 name: Production byhnex.com
 
-# main is production: each merge into main runs the full CI, then deploys to the OVH hosting.
+# main is production: each push to main (direct or merged PR) runs the full CI, then deploys to OVH.
 on:
   push:
     branches: [main]

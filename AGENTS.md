@@ -19,8 +19,8 @@ Détails : [docs/architecture.md](docs/architecture.md). État de la migration :
 
 ## 2. Règles absolues
 
-1. **`main` = production.** Tout merge dans `main` part en ligne automatiquement. Personne ne pousse directement sur `main` : une branche, une Pull Request, la CI au vert, une relecture.
-2. **Aucun changement visuel ou fonctionnel non demandé.** Une page migrée doit rester identique au pixel près à l'original (test de parité visuelle). Un changement d'interface se fait dans une PR dédiée, demandée explicitement.
+1. **`main` = production, push direct autorisé.** Le propriétaire autorise à pousser directement sur `main`, sans Pull Request : chaque push part en ligne automatiquement après la CI complète. Si la CI échoue, rien n'est déployé et le site en ligne reste en place : corriger puis repousser. Ne jamais réécrire l'historique de `main` (force push et suppression sont bloqués).
+2. **Aucun changement visuel ou fonctionnel non demandé.** Une page migrée doit rester identique au pixel près à l'original (test de parité visuelle). Un changement d'interface se fait dans un commit dédié, demandé explicitement.
 3. **Aucun ordre réel, aucune clé d'exchange dans le code.** Le site n'exécute aucune transaction.
 4. **Aucun secret dans le dépôt, les logs ou les messages.** Les accès vivent dans les secrets GitHub (`PROD_*`) et sur le serveur (`~/byhnex-api/.env.local`). Ne jamais afficher, copier ou committer un mot de passe, un jeton ou une `DATABASE_URL` réelle.
 5. **Données personnelles.** Elles restent dans le navigateur, sauf si l'utilisateur se connecte à son compte : elles vont alors **uniquement** sur l'API Byhnex (`/api`), jamais chez un tiers.
@@ -29,19 +29,20 @@ Détails : [docs/architecture.md](docs/architecture.md). État de la migration :
 
 ## 3. Méthode de travail
 
-1. Partir de `main` à jour : `git switch main && git pull && git switch -c <type>/<sujet-court>` (ex. `feat/page-cycles-vue`, `fix/api-session-expiree`).
+1. Partir de `main` à jour : `git switch main && git pull`.
 2. Petits commits au format **Conventional Commits**, en français : `feat(front): …`, `fix(api): …`, `refactor(…)`, `test(…)`, `docs(…)`, `ci(…)`, `chore(…)`. Un commit = un changement cohérent.
 3. Écrire ou mettre à jour les tests **dans le même commit** que le code.
-4. Lancer localement les vérifications de la section 5 avant de pousser.
-5. Ouvrir une PR vers `main` en remplissant le modèle (`.github/pull_request_template.md`). Décrire ce qui change pour l'utilisateur, comment c'est testé, et les risques.
-6. Ne jamais contourner une vérification (`--no-verify`, test désactivé, `@phpstan-ignore`, `eslint-disable` sans justification écrite sur la ligne).
+4. Lancer localement les vérifications de la section 5 **avant de pousser** : un push sur `main` part en production.
+5. Pousser sur `main` (`git push origin main`), puis suivre le déploiement dans l'onglet Actions jusqu'à « Vérification en ligne » ; en cas d'échec, corriger et repousser sans attendre.
+6. Pour un gros changement risqué, une branche et une Pull Request restent possibles (la CI tourne aussi sur les PR), mais ne sont pas obligatoires.
+7. Ne jamais contourner une vérification (`--no-verify`, test désactivé, `@phpstan-ignore`, `eslint-disable` sans justification écrite sur la ligne).
 
 ## 4. Conventions de code
 
 **Général**
 - Identifiants et commentaires en anglais, textes visibles par l'utilisateur en français (comme l'existant).
 - Les commentaires expliquent un choix non évident, pas ce que fait le code.
-- Pas de nouvelle dépendance sans justification dans la PR. Versions exactes (`frontend/package.json`), `composer.lock` et `package-lock.json` committés.
+- Pas de nouvelle dépendance sans justification dans le message de commit. Versions exactes (`frontend/package.json`), `composer.lock` et `package-lock.json` committés.
 
 **Frontend (`frontend/`)**
 - TypeScript strict, `<script setup lang="ts">`, composants dans `src/pages/<page>/components/`.
@@ -54,7 +55,7 @@ Détails : [docs/architecture.md](docs/architecture.md). État de la migration :
 - Toute erreur sort au format `{"error": {"code", "message"}}` via `App\Api\ApiException` ; messages en français.
 - Le schéma de base ne change **que** par une migration Doctrine (`php bin/console doctrine:migrations:diff`), compatible MySQL 8.4. Ne jamais modifier une migration déjà en production.
 - Compatibilité PHP 8.2 obligatoire (le serveur OVH est en 8.2) : PHPStan la vérifie.
-- Le contrat de l'API (`backend/tests/Contract/api.test.mjs`) décrit ce que le site attend. Un changement de réponse = mise à jour du test **et** du client (`frontend/src/account/api.ts`) dans la même PR.
+- Le contrat de l'API (`backend/tests/Contract/api.test.mjs`) décrit ce que le site attend. Un changement de réponse = mise à jour du test **et** du client (`frontend/src/account/api.ts`) dans le même commit.
 
 ## 5. Vérifications obligatoires (identiques à la CI)
 
@@ -85,14 +86,14 @@ La CI ajoute le contrat de l'API et les migrations sur un vrai MySQL 8.4 (`.gith
 - [ ] Aucune différence visuelle sur les pages migrées (parité verte) sauf demande explicite.
 - [ ] Pas de secret, pas de donnée personnelle envoyée à un tiers.
 - [ ] Documentation à jour si l'architecture, une commande ou un comportement change (`docs/`, ce fichier).
-- [ ] PR relue et CI verte avant le merge.
+- [ ] Déploiement suivi jusqu’à la vérification en ligne (CI verte, site à jour).
 
 ## 7. Migrer une page vers Vue
 
-Suivre [docs/migration.md](docs/migration.md) : une page par PR, même HTML et mêmes `id`, logique portée en TypeScript avec ses tests, scénario ajouté dans `frontend/tests/visual/cases.ts`, parité visuelle verte sur ordinateur et mobile.
+Suivre [docs/migration.md](docs/migration.md) : une page par commit (ou série de commits), même HTML et mêmes `id`, logique portée en TypeScript avec ses tests, scénario ajouté dans `frontend/tests/visual/cases.ts`, parité visuelle verte sur ordinateur et mobile.
 
 ## 8. Production et incidents
 
-- Déploiement : automatique au merge dans `main` (`.github/workflows/deploy-prod.yml`) avec copie de secours, migrations et vérification en ligne.
+- Déploiement : automatique à chaque push sur `main` (`.github/workflows/deploy-prod.yml`) avec copie de secours, migrations et vérification en ligne.
 - Retour arrière et sauvegardes : [deploy/README.md](deploy/README.md).
 - Ne jamais lancer de commande destructive sur le serveur ou la base (suppression, remise à zéro) sans accord explicite du propriétaire et sauvegarde vérifiée.
