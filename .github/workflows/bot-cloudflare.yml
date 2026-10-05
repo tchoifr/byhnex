@@ -7,6 +7,13 @@ on:
     branches: [main]
     paths: ['bot-worker/**', 'bot-engine.js', '.github/workflows/bot-cloudflare.yml']
   workflow_dispatch:
+    inputs:
+      cf_token:
+        description: "Jeton Cloudflare temporaire (si les secrets n'existent pas encore). Il reste lisible dans ce run : utiliser un jeton qui expire."
+        default: ''
+      cf_account:
+        description: Account ID Cloudflare (facultatif, deduit du jeton sinon)
+        default: ''
 permissions:
   contents: write
   actions: write
@@ -17,14 +24,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - name: Secrets presents ?
         id: check
+        env:
+          IN_TOKEN: ${{ inputs.cf_token }}
+          IN_ACCOUNT: ${{ inputs.cf_account }}
+          SECRET_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SECRET_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          CLOUDFLARE_API_TOKEN="${SECRET_TOKEN:-$IN_TOKEN}"
+          CLOUDFLARE_ACCOUNT_ID="${SECRET_ACCOUNT:-$IN_ACCOUNT}"
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "::add-mask::$CLOUDFLARE_API_TOKEN"; fi
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            CLOUDFLARE_ACCOUNT_ID=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts" | jq -r '.result[0].id // empty')
+          fi
+          echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID" >> "$GITHUB_ENV"
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "::warning::Secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID manquants : deploiement ignore."
             echo "ok=false" >> "$GITHUB_OUTPUT"
