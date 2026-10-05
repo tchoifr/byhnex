@@ -73,6 +73,22 @@
   td.now { outline: 1px dashed rgba(58,230,255,.75); outline-offset: -3px; font-style: italic; }
   .swipe { display: none; font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px; }
   [hidden] { display: none !important; }
+  @media (min-width: 1280px) and (min-height: 740px) {
+    .cy { gap: 12px; }
+    #view-saison:not([hidden]) { display: grid; grid-template-columns: minmax(250px, .62fr) minmax(0, 2fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px 14px; height: calc(100vh - 150px); height: calc(100dvh - 150px); }
+    #view-saison > .error { grid-column: 1 / -1; }
+    #view-saison > .ss-sum { grid-column: 1 / -1; }
+    #view-saison > .card.profile { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; justify-content: center; }
+    #view-saison > .card:not(.profile):not(.ss-sum) { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
+    #view-saison #ss-table { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
+    #view-saison .swipe { display: none; }
+    #view-saison #ss-table table { min-width: 0; table-layout: fixed; }
+    #view-saison #ss-table th, #view-saison #ss-table td { padding: 7px 3px; font-size: clamp(10px, .78vw, 12px); }
+    #view-saison #ss-table th { font-size: 10px; letter-spacing: .4px; }
+    #view-saison > .warn { grid-column: 1 / -1; grid-row: 3; }
+    .cy details.method { display: none; }
+    .warn { padding: 8px 14px; font-size: 12px; }
+  }
   @media (max-width: 760px) {
     .cy h1 { font-size: 19px; }
     .cy-head { flex-direction: column; align-items: stretch; }
@@ -84,7 +100,7 @@
     .coins { margin: 0 -14px; padding: 0 14px; }
   }
 </style>
-<link rel="stylesheet" href="byhnex.css?v=20261003-ovh"><link rel="stylesheet" href="sidebar.css?v=20261004-w3"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;600&display=swap"><link rel="stylesheet" href="web3.css?v=20261004-w3"></head>
+<link rel="stylesheet" href="byhnex.css?v=20261003-ovh"><link rel="stylesheet" href="sidebar.css?v=20261004-w3"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;600&display=swap"><link rel="stylesheet" href="web3.css?v=20261006-dash"></head>
 <body class="byhnex-shell byhnex-tool"><aside data-shared-sidebar></aside>
 <div class="container"><div class="cy">
   <header class="cy-head">
@@ -108,7 +124,7 @@
       <div id="rb-tip"></div>
       <div class="legend" id="rb-legend"></div>
     </div>
-    <p class="warn">Le Rainbow Chart est un repère visuel, pas un modèle scientifique : une tendance logarithmique colorée qui paraît sage une fois le passé connu. Il se recalcule avec chaque nouveau prix et une crypto peut sortir de l’arc-en-ciel dans les deux sens. Pas un conseil financier.</p>
+    <p class="warn">Repère visuel tiré du passé, pas une prédiction · pas un conseil financier.</p>
     <details class="method"><summary>Comment c’est calculé</summary>
       Historique quotidien depuis les origines de chaque crypto (CoinCodex) et prix en direct (Binance). On ajuste ln(prix) = a + b·ln(jours depuis la naissance), avec le bloc genesis du 3 janvier 2009 pour le Bitcoin et le premier cours connu moins 180 jours pour les autres. Les 9 bandes ont la même largeur et couvrent l’écart à la tendance entre les 2 % de jours les plus bas et les 2 % les plus hauts : lors des excès extrêmes, le prix sort de l’arc-en-ciel et compte dans la bande du bas ou du haut. Les bandes sont prolongées de 18 mois.
     </details>
@@ -117,10 +133,10 @@
   <!-- ---------------- Saisonnalité ---------------- -->
   <section id="view-saison" role="tabpanel" aria-labelledby="tab-saison" class="cy" hidden>
     <div class="error" id="ss-error"></div>
-    <div class="card"><div class="summary" id="ss-summary">Chargement des rendements mensuels depuis 2014…</div></div>
+    <div class="card ss-sum"><div class="summary" id="ss-summary">Chargement des rendements mensuels depuis 2014…</div></div>
     <div class="card profile"><div class="profile-head"><h2>Profil moyen d’une année</h2><small>rendement moyen de chaque mois · <span id="ss-years"></span></small></div><div id="ss-profile"></div></div>
     <div class="card"><div class="swipe">Glisse le tableau pour voir toute l’année →</div><div class="table-wrap" id="ss-table"></div></div>
-    <p class="warn">La saisonnalité décrit le passé, elle ne prédit pas l’avenir : environ 12 valeurs par mois, c’est statistiquement très peu, et les motifs connus de tous s’usent. Pas un conseil financier.</p>
+    <p class="warn">Le passé ne prédit pas l’avenir (environ 12 valeurs par mois) · pas un conseil financier.</p>
     <details class="method"><summary>Comment c’est calculé</summary>
       Rendement d’un mois = variation entre la dernière clôture BTC/USD du mois et celle du mois précédent (CoinCodex depuis 2014). Couleur proportionnelle à l’ampleur (saturée à ±30 %). Le mois en cours, en pointillés, suit le prix en direct toutes les 60 s et n’entre pas dans les statistiques du bas.
     </details>
@@ -290,12 +306,20 @@ views.rainbow = (() => {
   }
   const tickLabel = v => (v >= 1000 ? (v >= 1e6 ? (v / 1e6).toLocaleString('fr-FR') + ' M' : v >= 1e4 ? (v / 1e3).toLocaleString('fr-FR') + ' k' : v.toLocaleString('fr-FR')) : v.toLocaleString('fr-FR', {maximumSignificantDigits: 3})) + ' ' + Devises.symbol();
 
+  // PC (≥ 1280 × 740): the chart takes the height left on screen, so the page needs no scroll.
+  const pcFit = () => matchMedia('(min-width: 1280px) and (min-height: 740px)').matches;
+  function fitHeight(canvas) {
+    if (!pcFit()) return null;
+    const top = canvas.getBoundingClientRect().top + scrollY, bottom = canvas.getBoundingClientRect().bottom + scrollY;
+    const below = document.querySelector(".cy").getBoundingClientRect().bottom + scrollY - bottom + 52;
+    return Math.max(240, Math.round(innerHeight - top - below));
+  }
   function draw() {
     const e = cache[current], canvas = $('rb-chart');
     if (!e || $('view-rainbow').hidden) return;
     const W = canvas.clientWidth;
     if (W < 50) return;
-    const H = Math.max(300, Math.min(520, Math.round(W * (W < 600 ? 0.9 : 0.5))));
+    const H = fitHeight(canvas) ?? Math.max(300, Math.min(520, Math.round(W * (W < 600 ? 0.9 : 0.5))));
     const dpr = devicePixelRatio || 1;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); canvas.style.height = H + 'px';
     const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

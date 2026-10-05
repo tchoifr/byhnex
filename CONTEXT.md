@@ -105,11 +105,19 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
 - `bot-worker/` (Cloudflare Workers, offre gratuite) + `.github/workflows/bot-cloudflare.yml` : bot virtuel
   24 h/24 (argent fictif, aucune cle d'exchange, aucun ordre reel). Meme moteur que la page (`bot-engine.js`),
   logique pure dans `bot-worker/bot-core.js`. Un bot prive par personne (« Moi », « Collègue »), deverrouille
-  par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Cron chaque minute, mais travail
-  uniquement a la cloture d'une bougie (cle KV `index` = prochaine echeance par personne) : 1 lecture KV par
-  minute au repos, 2 ecritures par cloture, une personne par passage et 300 bougies pour rester sous les
-  10 ms de CPU de l'offre gratuite (mesure : ~2-4 ms). La page (onglet « Serveur 24 h/24 ») pilote le bot :
-  /me, /start, /stop, /resume, /reset. Adresse publiee dans `bot-config.json` par le deploiement.
+  par un code personnel : seul son SHA-256 est dans `wrangler.toml` (USERS). Chaque personne a son Durable
+  Object `BotRoom` (SQLite, offre gratuite) : stockage coherent (une pause ne peut pas etre ecrasee) et une
+  alarme qui le reveille juste apres chaque cloture de bougie (+20 s) ; rien ne tourne entre deux. Binance
+  injoignable : nouvel essai 5 min plus tard sans reecrire. Sources de cours essayees dans l'ordre : Binance
+  (data-api puis api), OKX (memes paires USDT, bougies UTC, 1Dutc), Coinbase (paires USD, pas de 4 h). Binance
+  refuse les serveurs Cloudflare (403 en Europe, 451 aux USA) : en pratique c'est OKX qui sert le bot serveur.
+  Toutes sont converties en lignes facon Binance (closeTime = openTime + pas - 1).
+  Le KV de la version precedente (binding OLD) n'est lu qu'une fois pour reprendre un bot existant.
+  La page Bot ne propose plus que ce bot serveur (l ancien mode « sur cet appareil » est retire de l interface ;
+  bot-engine.js sert encore a l apercu rejoue). Elle pilote le bot : /me, /start, /stop, /resume, /reset ;
+  Les Durable Objects sont places en Europe de l'Ouest (locationHint weur) : Binance repond 451 aux USA.
+  /health?prices teste les sources depuis un Durable Object place pareil (controle par le deploiement).
+  Adresse publiee dans `bot-config.json` par le deploiement.
   Secret (une fois, proprietaire) : CLOUDFLARE_API_TOKEN (Account ID deduit du jeton). Nouveau code : generer
   16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
 - `.github/workflows/pages.yml` : deploiement GitHub Pages a chaque push sur `main`.

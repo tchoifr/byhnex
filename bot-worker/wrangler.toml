@@ -1,4 +1,4 @@
-# Byhnex bot server. Deployed by .github/workflows/bot-cloudflare.yml (the KV id is filled in there).
+# Byhnex bot server. Deployed by .github/workflows/bot-cloudflare.yml (the old KV id is filled in there).
 # USERS holds only SHA-256 hashes of the personal codes: the codes themselves are never stored.
 name = "byhnex-bot"
 main = "byhnex-bot.js"
@@ -9,9 +9,19 @@ account_id = "77d62e954dc140ea754a53a83cb23564"
 [vars]
 USERS = '{"moi":{"name":"Moi","hash":"c09b2743780808a1df233c8d9462a16361160f4bcdf82a4d2ce1e49baea9f8d6"},"collegue":{"name":"Collègue","hash":"85343fbf6277454f415b42ee29f1b2f968e512a2a2aa9582ea66148311328385"}}'
 
+# Durable Object per person (free plan: SQLite-backed). Alarms replace the old every-minute cron.
+[[durable_objects.bindings]]
+name = "BOTS"
+class_name = "BotRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BotRoom"]
+
+# Storage of the previous version, read once to carry an existing bot over.
 [[kv_namespaces]]
-binding = "BOT"
+binding = "OLD"
 id = "__KV_ID__"
 
 [triggers]
-crons = ["* * * * *"]
+crons = []
