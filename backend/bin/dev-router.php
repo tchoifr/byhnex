@@ -9,7 +9,7 @@ if (!preg_match('#^/api(/|$)#', $path)) {
     return true;
 }
 // The built-in server does not copy environment variables into $_SERVER for requests.
-foreach (['APP_ENV', 'APP_DEBUG', 'DATABASE_URL', 'ALLOWED_ORIGINS', 'SESSION_COOKIE_SECURE'] as $name) {
+foreach (['APP_ENV', 'APP_DEBUG', 'DATABASE_URL', 'ALLOWED_ORIGINS', 'SESSION_COOKIE_SECURE', 'SOLANA_RPC_URL', 'PLATFORM_SOLANA_WALLET'] as $name) {
     if (false !== getenv($name)) {
         $_SERVER[$name] = getenv($name);
     }

@@ -71,13 +71,43 @@ jobs:
           fi
       - name: Configuration privée de l'API (créée au premier déploiement, sur le serveur)
         run: $SSH_CMD "$SSH_USER@$SSH_HOST" "php" < deploy/bootstrap-env.php
+      - name: Clé du bot et réglages des paiements Solana (sur le serveur)
+        env:
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          PLATFORM_SOLANA_WALLET: ${{ secrets.PLATFORM_SOLANA_WALLET || vars.PLATFORM_SOLANA_WALLET }}
+        run: |
+          # Values travel on SSH's standard input, never on a command line; empty ones keep what the server has.
+          printf 'SOLANA_RPC_URL=%s\nPLATFORM_SOLANA_WALLET=%s\n' "$SOLANA_RPC_URL" "$PLATFORM_SOLANA_WALLET" \
+            | $SSH_CMD "$SSH_USER@$SSH_HOST" "umask 077 && cat > ~/$API_DIR/.env.deploy.tmp"
+          key=$($SSH_CMD "$SSH_USER@$SSH_HOST" "php" < deploy/server-env.php)
+          [[ "$key" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Clé publique du bot illisible."; exit 1; }
+          echo "BOT_PUBLIC_KEY=$key" >> "$GITHUB_ENV"
+      - name: Serveur du bot des abonnés (Cloudflare)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BOT_SERVER_URL: ${{ vars.BOT_SERVER_URL }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            out=$(npx --yes wrangler@4.146.0 deploy --config bot-server/wrangler.toml --var "BOT_PUBLIC_KEY:$BOT_PUBLIC_KEY" 2>&1) || { echo "$out"; exit 1; }
+            echo "$out"
+            url=$(printf '%s\n' "$out" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -n1)
+            if [ -n "$url" ]; then BOT_SERVER_URL=$url; fi
+          else
+            echo "::warning::Secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID absents : serveur du bot des abonnés non déployé (voir deploy/README.md)."
+          fi
+          printf 'BOT_SERVER_URL=%s\n' "$BOT_SERVER_URL" | $SSH_CMD "$SSH_USER@$SSH_HOST" "umask 077 && cat > ~/$API_DIR/.env.deploy.tmp"
+          $SSH_CMD "$SSH_USER@$SSH_HOST" "php" < deploy/server-env.php > /dev/null
+          # bot.html reads the bot server's address here; null shows its "being set up" state.
+          BOT_SERVER_URL=$BOT_SERVER_URL node -e "require('fs').writeFileSync('dist/bot-config.json', JSON.stringify({url: process.env.BOT_SERVER_URL || null}) + '\n')"
+          echo "Serveur du bot : ${BOT_SERVER_URL:-non configuré}"
       - name: Copie de secours de la version en ligne
         run: $SSH_CMD "$SSH_USER@$SSH_HOST" "rm -rf ~/deploy-previous && mkdir ~/deploy-previous && cp -a ~/$WEB_DIR ~/deploy-previous/www && cp -a ~/$API_DIR ~/deploy-previous/api"
       - name: Envoi de l'API (hors du dossier web)
         run: |
           rsync -rlz --delete --chmod=D755,F644 \
-            --filter='P .env.local' --filter='P var/' \
-            --exclude='/tests/' --exclude='/var/' --exclude='/.env.local' --exclude='/.env.test' \
+            --filter='P .env.local' --filter='P .env.prod.local' --filter='P var/' \
+            --exclude='/tests/' --exclude='/var/' --exclude='/.env.local' --exclude='/.env.prod.local' --exclude='/.env.test' \
             --exclude='/phpunit.dist.xml' --exclude='/phpstan.dist.neon' --exclude='/.php-cs-fixer*' \
             --exclude='/compose*.yaml' --exclude='/.editorconfig' --exclude='/.gitignore' \
             -e "$SSH_CMD" backend/ "$SSH_USER@$SSH_HOST:$API_DIR/"
@@ -99,4 +129,5 @@ jobs:
           [ "$online" = "$expected" ] || { echo "::error::byhnex.com sert la version '$online' au lieu de '$expected'."; exit 1; }
           curl -fsS https://byhnex.com/ | grep -q 'assets/account-'
           curl -fsS https://byhnex.com/api/health | grep -q '"ok":true'
+          curl -fsS https://byhnex.com/abonnement.html | grep -q 'assets/abonnement-'
           echo "byhnex.com est en ligne avec la version $expected."

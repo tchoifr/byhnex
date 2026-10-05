@@ -5,6 +5,8 @@
 // first plain-PHP API (~/.secrets/byhnex-config.php). Secrets never leave the server.
 
 $home = (string) getenv('HOME');
+// STDERR is not defined when PHP reads the script from standard input.
+$err = fopen('php://stderr', 'w');
 $target = $home.'/byhnex-api/.env.local';
 if (is_file($target)) {
     echo ".env.local déjà présent.\n";
@@ -13,7 +15,7 @@ if (is_file($target)) {
 
 $legacy = $home.'/.secrets/byhnex-config.php';
 if (!is_file($legacy)) {
-    fwrite(\STDERR, "Ni ~/byhnex-api/.env.local ni ~/.secrets/byhnex-config.php : créez .env.local (voir deploy/README.md).\n");
+    fwrite($err, "Ni ~/byhnex-api/.env.local ni ~/.secrets/byhnex-config.php : créez .env.local (voir deploy/README.md).\n");
     exit(1);
 }
 
@@ -22,7 +24,7 @@ $db = $config['db'];
 foreach (['user', 'password', 'host', 'name'] as $key) {
     // Symfony resolves %…% and $… inside .env values: keep to characters that need no escaping.
     if (!preg_match('/^[A-Za-z0-9._-]+$/', (string) $db[$key])) {
-        fwrite(\STDERR, "La valeur db.$key contient des caractères spéciaux : créez .env.local à la main (voir deploy/README.md).\n");
+        fwrite($err, "La valeur db.$key contient des caractères spéciaux : créez .env.local à la main (voir deploy/README.md).\n");
         exit(1);
     }
 }

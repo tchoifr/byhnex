@@ -80,3 +80,20 @@ test('repeated failed logins are throttled', async () => {
   for (let i = 0; i < 9; i++) last = await c('POST', '/auth/login', {email: target, password: 'mauvais-mot-de-passe'});
   assert.equal(last.status, 429); assert.equal(last.body.error.code, 'too_many_attempts');
 });
+
+test('the bot subscription stays closed until Solana is configured, and never opens from the browser', async () => {
+  const c = client(), who = `abonne-${Date.now()}@example.com`;
+  assert.equal((await c('GET', '/subscription/me')).status, 401);
+  assert.equal((await c('POST', '/auth/register', {email: who, password})).status, 201);
+  const me = await c('GET', '/subscription/me');
+  assert.equal(me.status, 200); assert.equal(me.body.subscription, null); assert.equal(me.body.offer.price, '1.00');
+  assert.equal(me.body.offer.available, false, 'Sans RPC ni wallet de la plateforme, les paiements restent fermés.');
+  const intent = await c('POST', '/subscription/payment-intent', {method: 'qr'});
+  assert.equal(intent.status, 503); assert.equal(intent.body.error.code, 'PAYMENTS_NOT_CONFIGURED');
+  assert.equal((await c('POST', '/subscription/payment-intent', {method: 'qr'}, {csrf: false})).status, 403);
+  const token = await c('POST', '/bot/token');
+  assert.equal(token.status, 403); assert.equal(token.body.error.code, 'SUBSCRIPTION_REQUIRED');
+  assert.equal((await c('POST', '/subscription/activate', {days: 30})).status, 404);
+  assert.deepEqual((await c('GET', '/subscription/payments')).body, {payments: []});
+  assert.equal((await c('DELETE', '/account', {password})).status, 200);
+});

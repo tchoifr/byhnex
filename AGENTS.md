@@ -9,19 +9,20 @@ Byhnex est un ensemble d'outils crypto (cours en direct, signaux, graphiques d'a
 | Dossier | Rôle | Technologie |
 |---|---|---|
 | `frontend/` | Pages migrées et module de compte | Vue 3, TypeScript strict, Vite |
-| `backend/` | API `/api` : comptes, sessions, données synchronisées | Symfony 7.4 LTS, PHP 8.2, Doctrine, MySQL 8.4 |
+| `backend/` | API `/api` : comptes, sessions, données synchronisées, abonnement au bot (USDC sur Solana) | Symfony 7.4 LTS, PHP 8.2, Doctrine, MySQL 8.4 |
 | `deploy/` | Build de production, configuration Apache, empreinte SSH du serveur | Node.js |
 | `docs/` | Architecture, migration page par page | Markdown |
 | racine (`*.html`, `*.js`, `*.css`) | **Pages d'origine (legacy)**, en cours de migration vers `frontend/` | HTML/JS sans build |
 | `bot-worker/`, `worker/`, `scripts/` | Bots et robot d'osvalt16 (Cloudflare, GitHub Actions) | JavaScript |
+| `bot-server/` | Serveur du bot des abonnés byhnex.com (Cloudflare, compte Byhnex), au-dessus de `bot-worker/` sans le modifier | JavaScript |
 
-Détails : [docs/architecture.md](docs/architecture.md). État de la migration : [docs/migration.md](docs/migration.md).
+Détails : [docs/architecture.md](docs/architecture.md). État de la migration : [docs/migration.md](docs/migration.md). Abonnement et paiements : [docs/paiement.md](docs/paiement.md).
 
 ## 2. Règles absolues
 
 1. **`main` = production, push direct autorisé.** Le propriétaire autorise à pousser directement sur `main`, sans Pull Request : chaque push part en ligne automatiquement après la CI complète. Si la CI échoue, rien n'est déployé et le site en ligne reste en place : corriger puis repousser. Ne jamais réécrire l'historique de `main` (force push et suppression sont bloqués).
 2. **Aucun changement visuel ou fonctionnel non demandé.** Une page migrée doit rester identique au pixel près à l'original (test de parité visuelle). Un changement d'interface se fait dans un commit dédié, demandé explicitement.
-3. **Aucun ordre réel, aucune clé d'exchange dans le code.** Le site n'exécute aucune transaction.
+3. **Aucun ordre réel, aucune clé d'exchange dans le code.** Le bot reste en argent fictif. Seule exception on-chain : le paiement de l'abonnement, signé dans le wallet de la personne. Ne jamais demander ni stocker de clé privée ou de phrase de récupération, ne jamais activer un abonnement sans la vérification on-chain du serveur, ne jamais simuler un paiement hors des tests ([docs/paiement.md](docs/paiement.md)).
 4. **Aucun secret dans le dépôt, les logs ou les messages.** Les accès vivent dans les secrets GitHub (`PROD_*`) et sur le serveur (`~/byhnex-api/.env.local`). Ne jamais afficher, copier ou committer un mot de passe, un jeton ou une `DATABASE_URL` réelle.
 5. **Données personnelles.** Elles restent dans le navigateur, sauf si l'utilisateur se connecte à son compte : elles vont alors **uniquement** sur l'API Byhnex (`/api`), jamais chez un tiers.
 6. **Toujours afficher « Pas un conseil financier »** là où des analyses ou simulations sont présentées.
@@ -73,8 +74,9 @@ vendor/bin/php-cs-fixer fix --dry-run --diff
 php bin/console cache:warmup --env=dev && vendor/bin/phpstan analyse
 php bin/phpunit
 
-# Pages d'origine
+# Pages d'origine et serveur du bot des abonnés
 npm test
+node --test bot-server/worker.test.mjs
 
 # Parité visuelle des pages migrées (Chromium via Playwright)
 npm --prefix frontend run build && node deploy/build.mjs && node deploy/build.mjs --legacy

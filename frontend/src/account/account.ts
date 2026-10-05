@@ -158,9 +158,13 @@ function watchStorage(): void {
 }
 
 // ---------- Session ----------
+// Tells the page that someone signed in or out from the dialog (the subscription page reloads its state).
+const announce = (): boolean => window.dispatchEvent(new CustomEvent('byhnex:account', { detail: user }))
+
 async function signedIn(u: AccountUser, { firstTime = false } = {}): Promise<void> {
   user = u
   if (!firstTime) return sync({ onLoad: true })
+  announce()
   const server = await accountApi.readData()
   const local = snapshot(localStorage)
   const overlap = merge({ local, server: server.data ?? {} }).conflicts.length > 0
@@ -174,7 +178,9 @@ async function signedIn(u: AccountUser, { firstTime = false } = {}): Promise<voi
 }
 
 function signedOut(): void {
+  const was = user
   user = null
+  if (was) announce()
   writeMeta({})
   clearTimeout(pushTimer)
   setStatus('idle')
@@ -373,6 +379,8 @@ export async function startAccount(): Promise<void> {
   })
   document.body.append(pill, dialog)
   pill.onclick = () => openDialog()
+  // Pages ask for the sign-in dialog with this event (detail: 'login' or 'register').
+  window.addEventListener('byhnex:open-account', (e) => openDialog((e as CustomEvent<'login' | 'register' | undefined>).detail))
   const host = document.querySelector<HTMLElement>('.bn-user')
   if (host) {
     host.setAttribute('role', 'button')

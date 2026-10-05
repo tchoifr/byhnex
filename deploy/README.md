@@ -21,6 +21,9 @@ Tout push sur `main` (direct ou par fusion de PR) est testé puis déployé auto
 | `PROD_WEB_DIR` | `www` |
 | `PROD_SSH_PASSWORD` | mot de passe SSH (ou `PROD_SSH_KEY`, clé privée dédiée, recommandé) |
 | `SYNC_TOKEN` | jeton fin limité à `tchoifr/byhnex` (Contents et Workflows en lecture/écriture), pour fusionner automatiquement les commits d'osvalt16 |
+| `PLATFORM_SOLANA_WALLET` | adresse **publique** du wallet Solana qui reçoit les abonnements en USDC ([docs/paiement.md](../docs/paiement.md)) |
+| `SOLANA_RPC_URL` | URL du RPC Solana mainnet avec sa clé (Helius) |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | compte Cloudflare de Byhnex, pour le serveur du bot des abonnés (`bot-server/`) |
 
 L'empreinte du serveur est fixée dans `deploy/known_hosts` : la CI refuse tout autre serveur.
 
@@ -36,6 +39,8 @@ DATABASE_URL="mysql://<utilisateur>:<mot de passe>@<hôte>.mysql.db:3306/<base>?
 ALLOWED_ORIGINS=https://byhnex.com
 SESSION_COOKIE_SECURE=1
 ```
+
+Le déploiement ajoute `BOT_TOKEN_SECRET_KEY` (clé Ed25519 des codes d'accès au bot, créée sur le serveur) et écrit `~/byhnex-api/.env.prod.local` (`SOLANA_RPC_URL`, `PLATFORM_SOLANA_WALLET`, `BOT_SERVER_URL`) à partir des secrets GitHub, avec `deploy/server-env.php`.
 
 Changer le mot de passe de la base dans OVH impose de mettre à jour `DATABASE_URL` ici, puis de vider le cache : `cd ~/byhnex-api && php bin/console cache:clear --env=prod`.
 

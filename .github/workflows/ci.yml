@@ -105,13 +105,16 @@ jobs:
       - name: Contrat de l'API (mêmes réponses que la version en production)
         env:
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/byhnex_new?serverVersion=8.4.0&charset=utf8mb4
+          # As in production before the Solana settings are in: payments closed.
+          SOLANA_RPC_URL: ''
+          PLATFORM_SOLANA_WALLET: ''
         run: |
           php -S 127.0.0.1:8080 bin/dev-router.php > var/php-server.log 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/api/health > /dev/null && break; sleep 0.5; done
           API_URL=http://127.0.0.1:8080/api node --test tests/Contract/api.test.mjs || { cat var/php-server.log var/log/test.log 2>/dev/null | tail -50; exit 1; }
 
   legacy:
-    name: Pages d'origine (tests existants)
+    name: Pages d'origine (tests existants) et serveur du bot des abonnés
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +122,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm test
+      - name: Serveur du bot des abonnés (bot-server/)
+        run: node --test bot-server/worker.test.mjs
 
   visual:
     name: Parité visuelle (Vue = version d'origine)

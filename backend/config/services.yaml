@@ -21,3 +21,10 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        # Solana is never called from the tests: the RPC answers from in-memory state.
+        App\Payment\SolanaRpcClient:
+            class: App\Tests\Support\FakeSolanaRpc
+            autowire: true

@@ -1,0 +1,31 @@
+# Per-account limits of the subscription endpoints (keys "u<account id>").
+framework:
+    cache:
+        pools:
+            cache.byhnex_limiter:
+                adapter: cache.app
+    rate_limiter:
+        payment_intent:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
+            cache_pool: cache.byhnex_limiter
+        payment_verify:
+            policy: sliding_window
+            limit: 30
+            interval: '10 minutes'
+            cache_pool: cache.byhnex_limiter
+        # Page polling: beyond this, the stored state is returned without asking Solana.
+        payment_refresh:
+            policy: token_bucket
+            limit: 20
+            rate: { interval: '1 minute', amount: 20 }
+            cache_pool: cache.byhnex_limiter
+
+when@test:
+    framework:
+        cache:
+            pools:
+                # Each test starts with fresh limits.
+                cache.byhnex_limiter:
+                    adapter: cache.adapter.array
