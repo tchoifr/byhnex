@@ -110,7 +110,8 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   refuse les serveurs Cloudflare (403 en Europe, 451 aux USA) : en pratique c'est OKX qui sert le bot serveur.
   Toutes sont converties en lignes facon Binance (closeTime = openTime + pas - 1).
   Le KV de la version precedente (binding OLD) n'est lu qu'une fois pour reprendre un bot existant.
-  La page (onglet « Serveur 24 h/24 ») pilote le bot : /me, /start, /stop, /resume, /reset ;
+  La page Bot ne propose plus que ce bot serveur (l ancien mode « sur cet appareil » est retire de l interface ;
+  bot-engine.js sert encore a l apercu rejoue). Elle pilote le bot : /me, /start, /stop, /resume, /reset ;
   Les Durable Objects sont places en Europe de l'Ouest (locationHint weur) : Binance repond 451 aux USA.
   /health?prices teste les sources depuis un Durable Object place pareil (controle par le deploiement).
   Adresse publiee dans `bot-config.json` par le deploiement.
