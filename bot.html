@@ -64,7 +64,6 @@
   .strat:has(input:checked) i { color: #0a0718; background: linear-gradient(140deg,#3ae6ff,#8d63ff); }
   .strat b { display: block; font-size: 13.5px; white-space: nowrap; }
   .strat small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
-  .strat-help { margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
   .strat:has(input:checked) { border-color: rgba(58,230,255,.55); background: rgba(58,230,255,.06); box-shadow: 0 0 0 1px rgba(58,230,255,.25) inset; }
   .strat:has(input:focus-visible) { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -146,13 +145,19 @@
   .ptabs:empty { display: none; }
   .ptabs button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted); font: 800 12px Manrope, sans-serif; cursor: pointer; }
   .ptabs button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff); border-color: transparent; }
-  .swipe-hint { display: none; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 18px; border: 1px solid var(--line); background: rgba(10,12,28,.7); }
-  .modes button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 52px; padding: 6px 8px; border: 0; border-radius: 14px; background: none; color: var(--muted); cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; }
+  .dots { display: none; }
+  .status-text p:empty { display: none; }
+  .cfg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cfg span { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.05); border: 1px solid var(--line); }
+  .cfg span:first-child { color: var(--cyan); border-color: rgba(58,230,255,.35); }
+  .bot.has-bot #settings, .bot.srv-wait #settings, .bot.srv-wait .status-pnl, .bot.srv-wait .results, .bot.srv-wait .coins { display: none; }
+  .bot.srv-wait .layout { display: none; }
+  .bot.has-bot .layout { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1100px) { .bot.has-bot .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+  .modes { width: min(100%, 520px); display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 18px; border: 1px solid var(--line); background: rgba(10,12,28,.7); }
+  .modes button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 14px; background: none; color: var(--muted); cursor: pointer; font: inherit; -webkit-tap-highlight-color: transparent; }
   .modes button b { font-size: 13.5px; font-weight: 800; }
-  .modes button small { font-size: 11px; color: var(--dim); }
   .modes button[aria-selected="true"] { color: #0a0718; background: linear-gradient(120deg,#3ae6ff,#8d63ff 60%,#ff52d9); box-shadow: 0 8px 22px -12px #8d63ff; }
-  .modes button[aria-selected="true"] small { color: rgba(10,7,24,.75); }
   .modes button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   a.btn { text-decoration: none; }
   .server-help { grid-column: 1 / -1; padding: 12px 14px; border-radius: 14px; background: rgba(58,230,255,.05); border: 1px solid rgba(58,230,255,.2); font-size: 12.5px; line-height: 1.55; color: var(--muted); }
@@ -188,7 +193,9 @@
     .charts::-webkit-scrollbar { display: none; }
     .charts { align-items: flex-start; }
     .charts > .card { flex: 0 0 90%; scroll-snap-align: center; }
-    .swipe-hint { display: block; margin: -8px 0 0; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--dim); }
+    .dots { display: flex; justify-content: center; gap: 6px; margin: -6px 0 0; }
+    .dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(150,160,255,.25); transition: width .2s, background .2s; }
+    .dots i.on { width: 18px; background: var(--cyan); }
     .adv summary { min-height: 56px; }
     .actions .btn { flex: 1; justify-content: center; }
     .tiles { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 42%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
@@ -215,23 +222,23 @@
 <body class="byhnex-shell byhnex-tool"><aside data-shared-sidebar></aside>
 <div class="container"><div class="bot">
   <header class="bot-head">
-    <h1>Bot de trading virtuel</h1>
-    <span class="chip">◎ Argent fictif · aucun ordre réel</span>
+    <h1>Bot de trading</h1>
+    <span class="chip">◎ Argent fictif · pas un conseil financier</span>
   </header>
 
   <div class="modes" role="tablist" aria-label="Où tourne le bot">
-    <button type="button" role="tab" id="mode-local" aria-selected="true"><b>📱 Sur cet appareil</b><small>tant que la page est ouverte</small></button>
-    <button type="button" role="tab" id="mode-server" aria-selected="false"><b>☁️ Serveur 24 h/24</b><small>même application fermée</small></button>
+    <button type="button" role="tab" id="mode-local" aria-selected="true"><b>📱 Sur cet appareil</b></button>
+    <button type="button" role="tab" id="mode-server" aria-selected="false"><b>☁️ Serveur 24 h/24</b></button>
   </div>
 
   <section class="card status" id="status" aria-live="polite">
     <div class="orb" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V5M9.5 13h.01M14.5 13h.01M9.5 16.2h5M3 13v2M21 13v2"/><circle cx="12" cy="4" r="1"/></svg></div>
-    <div class="status-text"><b id="status-title">Bot en veille</b><p id="status-text">Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.</p><p class="clock" id="clock"></p></div>
+    <div class="status-text"><b id="status-title">Bot en veille</b><p id="status-text"></p><p class="cfg" id="cfg-sum" hidden></p><p class="clock" id="clock"></p></div>
     <div class="status-pnl"><span id="pnl-label">Résultat rejoué</span><strong id="pnl">—</strong></div>
     <div class="actions">
       <button class="btn primary" id="start" type="button">▶ Lancer en direct</button>
-      <button class="btn" id="stop" type="button" hidden>⏸ Arrêter le bot</button>
-      <button class="btn" id="reset" type="button" hidden>↺ Effacer le bot</button>
+      <button class="btn" id="stop" type="button" hidden>⏸ Pause</button>
+      <button class="btn" id="reset" type="button" hidden>↺ Effacer</button>
       <button class="btn" id="resume" type="button" hidden>▶ Reprendre</button>
       <button class="btn" id="logout" type="button" hidden>Changer de code</button>
     </div>
@@ -239,7 +246,6 @@
       <label for="code">Ton code personnel</label>
       <div class="login-row"><input id="code" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="40"><button class="btn primary" type="submit">Se connecter</button></div>
       <p class="error" id="login-error" role="alert"></p>
-      <p>Chacun a son propre bot, protégé par son code. Il reste mémorisé sur cet appareil.</p>
     </form>
   </section>
 
@@ -248,7 +254,7 @@
   <div class="layout">
     <form class="settings card" id="settings" novalidate>
       <div><p class="label">Cryptos · 3 max <span class="count" id="asset-count"></span></p><div class="rail" id="assets"></div></div>
-      <div><p class="label">Stratégie</p><div class="strats" id="strats"></div><p class="strat-help" id="strat-help"></p></div>
+      <div><p class="label">Stratégie</p><div class="strats" id="strats"></div></div>
       <details class="adv" id="adv" open><summary><span class="adv-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></span><span class="adv-txt"><b>Réglages avancés</b><small id="adv-sum"></small></span></summary><div class="adv-body">
       <div class="fields" id="params"></div>
       <div class="fields">
@@ -277,12 +283,11 @@
         <div id="equity-table" hidden></div>
       </section>
       </div>
-      <p class="swipe-hint" aria-hidden="true">← Glisse pour voir prix / valeur du portefeuille →</p>
+      <div class="dots" id="chart-dots" aria-hidden="true"><i class="on"></i><i></i></div>
       <section class="card">
         <div class="chart-head"><h2 id="journal-title">Journal du bot</h2></div>
         <div class="journal" id="journal"></div>
       </section>
-      <p class="warn">Le bot ne passe aucun ordre réel : tout se joue avec de l’argent fictif, au prix de clôture de chaque bougie, frais inclus. Un résultat passé ne prédit rien. Le capital est réparti à parts égales entre les cryptos choisies. Le bot en direct décide dès la dernière clôture, tourne tant que la page est ouverte et rattrape les bougies manquées à ta prochaine visite (jusqu’à 500). Pas un conseil financier.</p>
     </div>
   </div>
 </div></div>
@@ -345,7 +350,7 @@ function renderSettings() {
   const order = [...prefs.assets, ...ASSETS.filter(a => !prefs.assets.includes(a))];
   $('assets').innerHTML = order.map(a => `<label class="pick"><input type="checkbox" name="asset" value="${a}"${prefs.assets.includes(a) ? ' checked' : ''}><span>${a}</span></label>`).join('');
   lockAssets();
-  $('strats').innerHTML = Object.keys(STRATEGIES).map(k => `<label class="strat"><input type="radio" name="strategy" value="${k}"${k === prefs.strategy ? ' checked' : ''}><i aria-hidden="true">${ICON[k]}</i><b>${NAMES[k]}</b><small>${TAG[k]}</small></label>`).join('');
+  $('strats').innerHTML = Object.keys(STRATEGIES).map(k => `<label class="strat" title="${HELP[k]}"><input type="radio" name="strategy" value="${k}"${k === prefs.strategy ? ' checked' : ''}><i aria-hidden="true">${ICON[k]}</i><b>${NAMES[k]}</b><small>${TAG[k]}</small></label>`).join('');
   renderParams();
   const picked = $('strats').querySelector('input:checked')?.closest('.strat');
   if (picked) $('strats').scrollLeft = picked.offsetLeft - $('strats').offsetLeft - 18;
@@ -364,7 +369,6 @@ function renderParams() {
   const p = {...STRATEGIES[prefs.strategy].defaults, ...(prefs.params[prefs.strategy] || {})};
   $('params').innerHTML = PARAMS[prefs.strategy].map(([k, label, step]) => `<label class="field">${label}<input type="number" data-param="${k}" step="${step}" value="${p[k]}" inputmode="decimal"></label>`).join('');
   $('strat-hint').textContent = STRATEGIES[prefs.strategy].label + '.';
-  $('strat-help').textContent = HELP[prefs.strategy];
 }
 function advSummary() {
   const p = PARAMS[prefs.strategy].map(([k]) => $('params').querySelector(`[data-param="${k}"]`)?.value).join(' / ');
@@ -404,7 +408,7 @@ async function runReplay() {
   $('error').textContent = '';
   try { validateConfig(cfg); } catch (e) { $('error').textContent = e.message; return; }
   if (live) return renderAll();
-  $('status-text').textContent = 'Chargement de l’historique ' + prefs.assets.join(', ') + '…';
+  $('status-text').textContent = 'Chargement…';
   try {
     const got = await Promise.all(prefs.assets.map(a => fetchCandles(a, prefs.interval, 1000)));
     if (id !== loadId) return;
@@ -596,32 +600,44 @@ function startServer() {
   return serverAction('start', 'Démarrage…', '/start', {assets: prefs.assets, interval: prefs.interval, strategy: cfg.strategy, params: cfg.params, capital: cfg.capital, fee: cfg.fee});
 }
 
+// Settings of the running bot, as chips: the settings form is hidden while a bot runs.
+function renderCfg() {
+  const el = $('cfg-sum');
+  if (!live) { el.hidden = true; return; }
+  const p = {...STRATEGIES[live.cfg.strategy].defaults, ...live.cfg.params};
+  const vals = PARAMS[live.cfg.strategy].map(([k]) => p[k]).join(' / ');
+  el.innerHTML = [live.assets.join(' · '), `${NAMES[live.cfg.strategy]} ${vals}`, `Bougies ${live.interval}`, usd(live.cfg.capital)].map(t => `<span>${t}</span>`).join('');
+  el.hidden = false;
+}
 function renderClock() {
   if (!live) { $('clock').textContent = ''; return; }
   if (live.server) {
-    if (live.stopped) { $('clock').textContent = 'Serveur en pause : il ne prend plus de décision.'; return; }
+    if (live.stopped) { $('clock').textContent = ''; return; }
     const step = STEP[live.interval], left = Math.ceil(Date.now() / step) * step - Date.now();
     const h = Math.floor(left / 36e5), m = Math.floor(left % 36e5 / 6e4), s = Math.floor(left % 6e4 / 1000), two = v => String(v).padStart(2, '0');
-    $('clock').innerHTML = `<span class="pulse"></span>Prochaine décision dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · serveur actif 24 h/24`;
+    $('clock').innerHTML = `<span class="pulse"></span>Prochaine décision dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · 24 h/24`;
     return;
   }
-  const ago = Math.max(0, Math.round((Date.now() - live.checkedAt) / 1000));
-  const seen = ago < 60 ? `il y a ${ago} s` : `à ${hhmm(live.checkedAt)}`;
-  if (live.stopped) { $('clock').textContent = `Cours vérifiés ${seen}.`; return; }
+  if (live.stopped) { $('clock').textContent = ''; return; }
   const step = STEP[live.interval], left = Math.ceil(Date.now() / step) * step - Date.now();
   const h = Math.floor(left / 36e5), m = Math.floor(left % 36e5 / 6e4), s = Math.floor(left % 6e4 / 1000);
   const two = v => String(v).padStart(2, '0');
-  $('clock').innerHTML = `<span class="pulse"></span>Prochaine décision dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b> · cours vérifiés ${seen}`;
+  $('clock').innerHTML = `<span class="pulse"></span>Prochaine décision dans <b>${h ? h + ' h ' : ''}${two(m)}:${two(s)}</b>`;
 }
 function renderAll() {
   const running = live && !live.stopped;
   document.querySelector('.bot').classList.toggle('running', !!running);
+  document.querySelector('.bot').classList.toggle('has-bot', !!live);
+  renderCfg();
   const srv = mode === 'server', st = serverState, ready = !srv || st === 'empty';
+  document.querySelector('.bot').classList.toggle('srv-wait', srv && !live && !ready);
   $('start').hidden = !!live || !ready;
   if (!$('start').disabled) $('start').textContent = srv ? '▶ Lancer sur le serveur' : '▶ Lancer en direct';
   $('stop').hidden = !running; $('reset').hidden = !live;
   $('resume').hidden = !(srv && live && live.stopped);
   $('logout').hidden = !(srv && (st === 'bot' || st === 'empty'));
+  $('logout').textContent = serverName ? `👤 ${serverName}` : '👤 Code';
+  $('logout').title = 'Changer de code';
   $('login-box').hidden = !(srv && st === 'login');
   for (const el of $('settings').elements) el.disabled = !!live || !ready;
   lockAssets();
@@ -630,35 +646,35 @@ function renderAll() {
   if (live) return renderLive();
   renderClock();
   if (!ready) return renderServerEmpty();
-  $('status-title').textContent = srv ? `Serveur · prêt${serverName ? ' (' + serverName + ')' : ''}` : 'Bot en veille';
-  if (!replay) { $('status-text').textContent = $('error').textContent ? 'Les cours ne sont pas disponibles pour l’instant : le bot ne peut ni rejouer ni démarrer. Recharge la page dans un instant.' : 'Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.'; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', 'Aucun résultat pour l’instant.'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
+  $('status-title').textContent = srv ? 'Serveur · prêt' : 'Aperçu de la stratégie';
+  if (!replay) { $('status-text').textContent = $('error').textContent ? 'Cours indisponibles, réessaie dans un instant.' : ''; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', '—'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
   const s = replay.stats, names = Object.keys(replay.assets), first = new Date(replay.equity[0].t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
-  $('status-text').textContent = `Rejoué sur ${replay.equity.length} bougies ${prefs.interval} de ${names.join(', ')} depuis le ${first}${names.length > 1 ? `, ${usd(replay.cfg.capital / names.length)} par crypto` : ''}. ${srv ? 'Si le résultat te plaît, lance-le sur le serveur : il tournera 24 h/24, même application fermée.' : 'Si le résultat te plaît, lance-le en direct : il décide dès la dernière clôture.'}`;
+  $('status-text').textContent = `Rejoué depuis le ${first} · ${names.join(', ')}`;
   $('pnl-label').textContent = 'Résultat rejoué';
   $('pnl').innerHTML = `<span class="${cls(s.pct)}">${pct(s.pct)}</span>`;
   const sub = subCfg(replay.cfg, names.length);
   renderCoins(names.map(a => {
     const r = replay.assets[a];
     return {a, price: candlesBy[a].at(-1).close, pct: r.stats.pct, hold: r.stats.holdPct, trades: r.stats.trades, state: r.state, read: readNow(r.state, candlesBy[a], sub)};
-  }), 'Aujourd’hui');
+  }));
   renderTiles(s);
-  renderJournal(replay.trades, 'Journal rejoué', 'Aucune opération : les conditions de la stratégie ne se sont jamais réunies sur cette période.', names.length > 1);
+  renderJournal(replay.trades, 'Journal rejoué', 'Aucune opération sur cette période.', names.length > 1);
   renderPrice(candlesBy[focus], replay.trades.filter(t => t.asset === focus), focus);
   $('equity-title').textContent = names.length > 1 ? `Valeur du portefeuille (${names.join(' + ')})` : 'Valeur du portefeuille';
   renderEquity(replay.equity);
 }
 function renderServerEmpty() {
   const text = {
-    loading: ['Connexion au serveur…', 'Lecture de ton bot 24 h/24.'],
-    pending: ['Serveur en cours d’installation', 'Le bot 24 h/24 tourne sur Cloudflare. Il sera disponible ici dès que l’installation sera terminée.'],
-    login: ['Entre ton code personnel', 'Ce bot tourne 24 h/24 sur le serveur, même application fermée. Tape ton code une fois pour retrouver ton bot.'],
-    error: ['Serveur injoignable', 'Impossible de joindre le serveur pour l’instant. Nouvel essai dans une minute.'],
+    loading: ['Connexion…', ''],
+    pending: ['Serveur en installation', ''],
+    login: ['Entre ton code', ''],
+    error: ['Serveur injoignable', 'Nouvel essai dans une minute.'],
   }[serverState] || ['Serveur', ''];
   $('status-title').textContent = text[0];
   $('status-text').textContent = text[1];
   $('pnl-label').textContent = 'Portefeuille fictif'; $('pnl').textContent = '—';
   $('coins').innerHTML = ''; renderTiles(null);
-  renderJournal([], 'Journal du bot serveur', 'Le journal se remplira dès que ton bot serveur sera lancé.');
+  renderJournal([], 'Journal du bot serveur', '—');
   $('price-plot').innerHTML = ''; $('ind-plot').hidden = true; $('price-legend').innerHTML = ''; $('price-tabs').innerHTML = '';
   $('equity-plot').innerHTML = ''; $('equity-table').innerHTML = '';
 }
@@ -667,11 +683,7 @@ function renderLive() {
   const open = live.assets.filter(a => live.states[a].qty > 0);
   const state = live.stopped ? 'en pause' : open.length ? `en position sur ${open.join(', ')}` : `attend le signal sur ${live.assets.join(', ')}`;
   $('status-title').textContent = live.server ? 'Serveur · ' + state : live.stopped ? 'Bot en pause' : 'Actif · ' + state;
-  $('status-text').textContent = live.error || (live.server ?
-    (live.stopped ? 'Ton bot serveur est en pause, son portefeuille fictif est conservé. Touche « Reprendre » pour le relancer.' :
-      `${serverName ? serverName + ' · ' : ''}${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Tourne sur le serveur depuis le ${when(live.startedAt)}, même application fermée.`) :
-    live.stopped ? 'Le portefeuille fictif est conservé. Efface le bot pour en lancer un autre.' :
-    `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Lancé le ${when(live.startedAt)}. Il décide à chaque clôture de bougie et suit les cours chaque minute.`);
+  $('status-text').textContent = live.error || (live.stopped ? 'Portefeuille fictif conservé.' : `Depuis le ${when(live.startedAt)}`);
   renderClock();
   $('pnl-label').textContent = 'Portefeuille fictif';
   $('pnl').innerHTML = `${usd(bot)} <span class="${cls(gain)}" style="font-size:14px">${pct(gain)}</span>`;
@@ -679,24 +691,24 @@ function renderLive() {
   renderCoins(live.assets.map(a => {
     const st = live.states[a], price = live.prices[a] ?? st.ref ?? 0;
     return {a, price, pct: (equityOf(st, price) / sub.capital - 1) * 100, hold: live.entry?.[a] ? (price / live.entry[a] - 1) * 100 : null, trades: st.trades.length, state: st, read: candlesBy[a] ? readNow(st, candlesBy[a], sub) : null};
-  }), 'En ce moment');
+  }));
   const sells = trades.filter(t => t.side === 'sell');
   renderTiles({final: bot, pct: gain, holdPct: holdGain, trades: trades.length, winRate: sells.length ? sells.filter(t => t.pnl > 0).length / sells.length * 100 : null, fees: live.assets.reduce((s, a) => s + live.states[a].fees, 0), live: true});
   const feed = [...trades, ...(live.checks || [])].sort((x, y) => x.t - y.t);
-  renderJournal(feed, live.server ? 'Journal du bot serveur' : 'Journal du bot en direct', 'Le bot prend sa première décision dès que les cours sont chargés.', live.assets.length > 1);
-  $('journal-title').textContent = `Journal du bot ${live.server ? 'serveur' : 'en direct'} · ${trades.length} ordre${trades.length > 1 ? 's' : ''}`;
+  renderJournal(feed, '', 'Première décision à la prochaine clôture.', live.assets.length > 1);
+  $('journal-title').textContent = `Journal · ${trades.length} ordre${trades.length > 1 ? 's' : ''}`;
   if (candlesBy[focus]) renderPrice(candlesBy[focus], trades.filter(t => t.asset === focus), focus, 200);
-  $('equity-title').textContent = 'Valeur du portefeuille depuis le lancement';
+  $('equity-title').textContent = 'Valeur du portefeuille';
   if ((live.history || []).length >= 2) {
     // The curve is only sampled while the page is open: a long gap is drawn as a break, not as a straight line.
     const eq = [], h = live.history;
     h.forEach((e, i) => { if (i && e.t - h[i - 1].t > (live.server ? 2.5 * STEP[live.interval] : 180000)) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
     renderEquity(eq);
-    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', `<p class="hint">${live.server ? 'Ligne coupée : le serveur n’a pas pu joindre Binance pendant un moment. Il a rattrapé les bougies manquées ensuite.' : 'Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.'}</p>`);
+    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', `<p class="hint">${live.server ? 'Ligne coupée : cours indisponibles un moment, bougies rattrapées ensuite.' : 'Ligne coupée : page fermée, bougies rattrapées à la réouverture.'}</p>`);
   }
-  else { $('equity-plot').innerHTML = '<p class="empty">La courbe se remplit à chaque vérification des cours (toutes les minutes) tant que la page est ouverte.</p>'; $('equity-table').innerHTML = ''; }
+  else { $('equity-plot').innerHTML = '<p class="empty">La courbe se remplit au fil des minutes.</p>'; $('equity-table').innerHTML = ''; }
 }
-function renderCoins(rows, readLabel) {
+function renderCoins(rows) {
   $('coins').className = 'coins n' + rows.length;
   $('coins').innerHTML = rows.map(r => {
     const inPos = r.state.qty > 0, g = r.read?.gauge;
@@ -704,7 +716,7 @@ function renderCoins(rows, readLabel) {
       <div class="coin-top"><b>${r.a}</b><span>${px(r.price)}</span></div>
       <span class="badge${inPos ? ' in' : ''}">${inPos ? 'EN POSITION · ' + usd(r.state.qty * r.price) : 'EN ATTENTE · ' + usd(r.state.cash)}</span>
       <div class="coin-pnl"><span class="${cls(r.pct)}"><em>Bot</em> ${pct(r.pct)}</span>${r.hold === null ? '' : `<span class="${cls(r.hold)}"><em>HOLD</em> ${pct(r.hold)}</span>`}<span><em>Ordres</em> ${r.trades}</span></div>
-      ${r.read ? `<div class="coin-read">${readLabel} : <b>${r.read.value}</b> · ${r.read.wait}</div>${g !== undefined ? `<div class="gauge" aria-hidden="true"><i style="left:${(g * 100).toFixed(1)}%"></i></div>` : ''}` : ''}
+      ${r.read ? `<div class="coin-read"><b>${r.read.value}</b> · ${r.read.wait}</div>${g !== undefined ? `<div class="gauge" aria-hidden="true"><i style="left:${(g * 100).toFixed(1)}%"></i></div>` : ''}` : ''}
     </button>`;
   }).join('');
 }
@@ -859,6 +871,10 @@ $('login-box').addEventListener('submit', e => {
   if (code.replace(/[^A-Za-z0-9]/g, '').length < 12) { $('login-error').textContent = 'Le code fait 16 caractères, par exemple ABCD-EFGH-JKMN-PQRS.'; return; }
   serverCode = code; write(CODE_KEY, code); $('login-error').textContent = ''; serverState = 'loading'; renderAll(); loadServer();
 });
+document.querySelector('.charts').addEventListener('scroll', e => {
+  const el = e.currentTarget, i = Math.round(el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth));
+  $('chart-dots').querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k === i));
+}, {passive: true});
 $('logout').addEventListener('click', () => { serverCode = null; write(CODE_KEY, null); live = null; replay = null; serverState = 'login'; $('code').value = ''; renderAll(); });
 $('stop').addEventListener('click', () => mode === 'server' ? serverAction('stop', 'Pause…', '/stop') : stopLive());
 $('resume').addEventListener('click', () => serverAction('resume', 'Reprise…', '/resume'));
