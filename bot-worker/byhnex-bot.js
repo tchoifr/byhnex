@@ -1,6 +1,6 @@
 // Byhnex bot server (Cloudflare Workers free plan). Virtual money only: no exchange key, no real order.
 // - One private bot per person, unlocked with a personal code (only its SHA-256 is stored, in USERS).
-// - Each person has their own Durable Object (BotRoom): strongly consistent storage, and an alarm that wakes
+// - Each person has their own Durable Object (BotRoom), placed in Western Europe: strongly consistent storage, and an alarm that wakes
 //   it right after each candle close. Nothing runs in between, and a pause can never be overwritten by a pass.
 // - The page drives it: /me, /start, /stop, /resume, /reset. Same engine as the page (bot-engine.js).
 // Bindings: BOTS (Durable Object BotRoom), OLD (KV of the previous version, read once to carry a bot over).
@@ -11,6 +11,9 @@ const ORIGINS = ['https://osvalt16.github.io', 'http://localhost:5173'];
 // Binance market-data mirror first (meant for data, open to cloud servers), main API as a fallback.
 const HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
 const LIMIT = 300, RETRY = 5 * 60000, SOON = 60000;
+// Binance answers 451 to some countries (the US among them): bots live in Western Europe, where it is open.
+const PLACE = {locationHint: 'weur'};
+const room = (env, name) => env.BOTS.get(env.BOTS.idFromName(name), PLACE);
 export const clock = {now: () => Date.now()};
 
 export const normCode = code => String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -40,15 +43,15 @@ async function whoIs(request, env) {
 }
 
 async function klines(symbol, interval, limit) {
-  let last;
+  const errors = [];
   for (const host of HOSTS) {
     try {
       const r = await fetch(`${host}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
       if (r.ok) return await r.json();
-      last = Error(`${host} HTTP ${r.status}`);
-    } catch (e) { last = e; }
+      errors.push(`${host} HTTP ${r.status}`);
+    } catch (e) { errors.push(`${host} ${e.message}`); }
   }
-  throw last;
+  throw Error(errors.join(' ; '));
 }
 async function fetchMarket(assets, interval, now) {
   const market = {};
@@ -95,6 +98,7 @@ export class BotRoom {
 
   async fetch(request) {
     const url = new URL(request.url), user = request.headers.get('X-User'), now = clock.now();
+    if (url.pathname === '/health') return json(await binanceCheck());
     const bot = await this.load(user);
     if (url.pathname === '/me') return json({bot});
     if (url.pathname === '/start') {
@@ -121,10 +125,14 @@ export class BotRoom {
   }
 }
 
-async function health(url) {
-  if (!url.searchParams.has('binance')) return {ok: true};
+// Tested from inside a Durable Object placed like the bots, so it sees what they will see.
+async function binanceCheck() {
   try { const k = await klines('BTCUSDT', '1h', 2); return {ok: true, binance: Array.isArray(k) && k.length > 0, btc: +k.at(-1)[4]}; }
   catch (e) { return {ok: true, binance: false, error: e.message}; }
+}
+async function health(url, env) {
+  if (!url.searchParams.has('binance')) return {ok: true};
+  return (await room(env, 'health-check').fetch(new Request('https://room/health'))).json();
 }
 
 export default {
@@ -132,7 +140,7 @@ export default {
     const h = cors(request), url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, {status: 204, headers: h});
     try {
-      if (request.method === 'GET' && url.pathname === '/health') return json(await health(url), 200, h);
+      if (request.method === 'GET' && url.pathname === '/health') return json(await health(url, env), 200, h);
       const user = await whoIs(request, env);
       if (!user) return json({error: 'Code inconnu.'}, 401, h);
       const isMe = url.pathname === '/me';
@@ -140,8 +148,7 @@ export default {
       if (!['/me', '/start', '/stop', '/resume', '/reset'].includes(url.pathname)) return json({error: 'Action inconnue.'}, 404, h);
       const body = isMe ? undefined : await request.text();
       if (body && body.length > 2000) return json({error: 'Requête trop longue.'}, 413, h);
-      const room = env.BOTS.get(env.BOTS.idFromName(user.id));
-      const r = await room.fetch(new Request('https://room' + url.pathname, {method: isMe ? 'GET' : 'POST', headers: {'X-User': user.id}, body}));
+      const r = await room(env, user.id).fetch(new Request('https://room' + url.pathname, {method: isMe ? 'GET' : 'POST', headers: {'X-User': user.id}, body}));
       const data = await r.json();
       return json({name: user.name, ...data}, r.status, h);
     } catch (e) { return json({error: e.message || 'Erreur du serveur.'}, 400, h); }
