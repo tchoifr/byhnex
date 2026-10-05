@@ -89,10 +89,16 @@ jobs:
           BOT_SERVER_URL: ${{ vars.BOT_SERVER_URL }}
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            out=$(npx --yes wrangler@4.146.0 deploy --config bot-server/wrangler.toml --var "BOT_PUBLIC_KEY:$BOT_PUBLIC_KEY" 2>&1) || { echo "$out"; exit 1; }
-            echo "$out"
-            url=$(printf '%s\n' "$out" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -n1)
-            if [ -n "$url" ]; then BOT_SERVER_URL=$url; fi
+            if out=$(npx --yes wrangler@4.146.0 deploy --config bot-server/wrangler.toml --var "BOT_PUBLIC_KEY:$BOT_PUBLIC_KEY" 2>&1); then
+              echo "$out"
+              url=$(printf '%s\n' "$out" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -n1)
+              if [ -n "$url" ]; then BOT_SERVER_URL=$url; fi
+            else
+              # The rest of the site still goes live; Cloudflare's answer is shown as an annotation (long tokens hidden).
+              echo "$out"
+              msg=$(printf '%s\n' "$out" | grep -vE '^\s*$' | tail -n 12 | sed -E 's/[A-Za-z0-9_-]{35,}/***/g' | tr '\n' ' ' | cut -c1-1500)
+              echo "::warning title=Serveur du bot non déployé::$msg"
+            fi
           else
             echo "::warning::Secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID absents : serveur du bot des abonnés non déployé (voir deploy/README.md)."
           fi
