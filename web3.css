@@ -270,7 +270,8 @@ body.bn-graph-page{--bg:#05060e;--panel:rgba(16,19,40,.62);--border:rgba(150,160
 
 /* Home: one screen, no scroll. Title + live prices, market pulse, the four tools; sizes follow the screen height. */
 .byhnex-home .home-fit{min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);box-sizing:border-box;justify-content:center;gap:clamp(14px,2.8vh,30px);padding-top:clamp(16px,3vh,34px);padding-bottom:clamp(14px,2.4vh,26px)}
-.byhnex-home .home-fit .w3-hero h1{margin:0;font-size:clamp(30px,min(3.3vw,7.5vh),60px);white-space:nowrap}
+.byhnex-home .home-fit .w3-hero h1{margin:0;font-size:clamp(28px,min(3.1vw,7vh),58px);overflow-wrap:normal;text-wrap:balance}
+.byhnex-home .home-fit .w3-hero>div{min-width:0}
 .byhnex-home .home-fit .w3-tile{min-height:clamp(120px,19vh,190px);justify-content:center;padding:clamp(16px,2.4vh,24px)}
 .byhnex-home .home-fit .w3-tile>b{font-size:clamp(22px,3.4vh,30px)}
 .home-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -300,11 +301,11 @@ body.bn-graph-page{--bg:#05060e;--panel:rgba(16,19,40,.62);--border:rgba(150,160
   .byhnex-home .home-fit .w3-tile{gap:6px}
   .byhnex-home .home-fit .w3-tile{min-height:0;padding:14px}
   .home-tools{gap:8px}
-  .home-tool{gap:10px;padding:10px 12px;border-radius:16px}
+  .home-tool{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;padding:10px 12px;border-radius:16px}
   .home-tool .bn-tool-icon{width:34px;height:34px;border-radius:11px}
   .home-tool .bn-tool-icon svg{width:19px;height:19px}
   .home-tool small{display:none}
-  .home-tool b{font-size:13px}
+  .home-tool b{font-size:12.5px;overflow-wrap:anywhere}
   .home-tool em{display:none}
   .home-foot{font-size:10.5px}
 }
