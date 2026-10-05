@@ -35,3 +35,7 @@ dist-legacy/
 frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
+
+# Symfony defaults without secrets (secrets live in .env.local, never committed)
+!backend/.env
+!backend/.env.test
