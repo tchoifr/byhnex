@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readSettings, startBot, tickBot} from './bot-server.mjs';
+import {readSettings, startBot, tickBot} from './bot-core.js';
 import {newBot, runBot} from '../bot-engine.js';
 
 const H = 36e5, candles = (n, f = i => 100 + 20 * Math.sin(i / 5)) => Array.from({length: n}, (_, i) => ({openTime: i * H, closeTime: (i + 1) * H - 1, close: f(i)}));
