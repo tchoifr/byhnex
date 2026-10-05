@@ -15,7 +15,8 @@ globalThis.fetch = async url => {
 // Minimal Durable Object runtime: one instance per name, storage with writes counted, a single alarm.
 function namespace(env) {
   const rooms = new Map();
-  return {rooms, idFromName: n => n, get(id) {
+  return {rooms, places: [], idFromName: n => n, get(id, opts) {
+    this.places.push(opts?.locationHint);
     if (!rooms.has(id)) {
       const data = new Map(), storage = {writes: 0, alarm: null,
         async get(k) { return data.has(k) ? structuredClone(data.get(k)) : undefined; },
@@ -99,6 +100,7 @@ test('the main Binance API is used when the data mirror refuses', async () => {
   finally { globalThis.fetch = real; }
   const h = await (await worker.fetch(new Request('https://bot.test/health?binance'), env)).json();
   assert.equal(h.binance, true);
+  assert.ok(env.BOTS.places.length && env.BOTS.places.every(p => p === 'weur'), 'bots and the check live in Western Europe');
 });
 
 test('a bot from the previous version is carried over', async () => {
@@ -108,6 +110,16 @@ test('a bot from the previous version is carried over', async () => {
   assert.deepEqual((await call(env, '/me')).bot.states, oldBot.states);
   assert.notEqual(env.BOTS.get('moi').state.storage.alarm, null);
   assert.equal((await call(env, '/me', {code: CODE2})).bot, null);
+});
+
+test('Binance blocked: the check says so, with every host tried', async () => {
+  const env = await makeEnv();
+  binanceDown = true;
+  try {
+    const h = await (await worker.fetch(new Request('https://bot.test/health?binance'), env)).json();
+    assert.equal(h.binance, false);
+    assert.match(h.error, /data-api.*451.*api\.binance\.com.*451/);
+  } finally { binanceDown = false; }
 });
 
 test('bad settings are refused with a readable message', async () => {

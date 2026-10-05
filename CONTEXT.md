@@ -108,7 +108,8 @@ Le site n'a aucune vocation transactionnelle : il informe, il ne decide pas.
   injoignable : nouvel essai 5 min plus tard sans reecrire. Hotes : data-api.binance.vision puis api.binance.com.
   Le KV de la version precedente (binding OLD) n'est lu qu'une fois pour reprendre un bot existant.
   La page (onglet « Serveur 24 h/24 ») pilote le bot : /me, /start, /stop, /resume, /reset ;
-  /health?binance verifie l'acces a Binance depuis Cloudflare (controle par le deploiement).
+  Les Durable Objects sont places en Europe de l'Ouest (locationHint weur) : Binance repond 451 aux USA.
+  /health?binance teste Binance depuis un Durable Object place pareil (controle par le deploiement).
   Adresse publiee dans `bot-config.json` par le deploiement.
   Secret (une fois, proprietaire) : CLOUDFLARE_API_TOKEN (Account ID deduit du jeton). Nouveau code : generer
   16 caracteres aleatoires, mettre sha256('byhnex-bot:' + code sans tirets, en majuscules) dans USERS.
