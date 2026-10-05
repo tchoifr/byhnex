@@ -721,7 +721,7 @@ function renderLive() {
   const trades = live.assets.flatMap(a => live.states[a].trades.map(t => ({...t, asset: a}))).sort((x, y) => x.t - y.t);
   renderCoins(live.assets.map(a => {
     const st = live.states[a], price = live.prices[a] ?? st.ref ?? 0;
-    return {a, price, pct: (equityOf(st, price) / sub.capital - 1) * 100, hold: live.entry?.[a] ? (price / live.entry[a] - 1) * 100 : null, trades: st.trades.length, state: st, read: candlesBy[a] ? readNow(st, candlesBy[a], sub) : null};
+    return {a, price, pct: (equityOf(st, price) / sub.capital - 1) * 100, hold: live.entry?.[a] ? ((1 - live.cfg.fee / 100) * price / live.entry[a] - 1) * 100 : null, trades: st.trades.length, state: st, read: candlesBy[a] ? readNow(st, candlesBy[a], sub) : null};
   }));
   const sells = trades.filter(t => t.side === 'sell');
   renderTiles({final: bot, pct: gain, holdPct: holdGain, trades: trades.length, winRate: sells.length ? sells.filter(t => t.pnl > 0).length / sells.length * 100 : null, fees: live.assets.reduce((s, a) => s + live.states[a].fees, 0), live: true});
