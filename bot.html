@@ -486,7 +486,7 @@ function renderAll() {
   if (live) return renderLive();
   renderClock();
   $('status-title').textContent = 'Bot en veille';
-  if (!replay) { $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', 'Aucun résultat pour l’instant.'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
+  if (!replay) { $('status-text').textContent = $('error').textContent ? 'Les cours ne sont pas disponibles pour l’instant : le bot ne peut ni rejouer ni démarrer. Recharge la page dans un instant.' : 'Choisis jusqu’à 3 cryptos et une stratégie : le bot la rejoue d’abord sur l’historique pour te montrer ce qu’elle aurait donné.'; $('pnl').textContent = '—'; $('coins').innerHTML = ''; renderTiles(null); renderJournal([], 'Journal rejoué', 'Aucun résultat pour l’instant.'); $('price-plot').innerHTML = ''; $('equity-plot').innerHTML = ''; return; }
   const s = replay.stats, names = Object.keys(replay.assets), first = new Date(replay.equity[0].t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
   $('status-text').textContent = `Rejoué sur ${replay.equity.length} bougies ${prefs.interval} de ${names.join(', ')} depuis le ${first}${names.length > 1 ? `, ${usd(replay.cfg.capital / names.length)} par crypto` : ''}. Si le résultat te plaît, lance-le en direct : il décide dès la dernière clôture.`;
   $('pnl-label').textContent = 'Résultat rejoué';
