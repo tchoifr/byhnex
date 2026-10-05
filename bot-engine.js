@@ -87,7 +87,8 @@ function sell(state, candle, qty, fee, reason) {
 const fmt = v => v.toLocaleString('fr-FR', {maximumFractionDigits: v >= 100 ? 0 : v >= 1 ? 2 : 6});
 
 // Processes every candle closed after state.lastTime. Returns the trades made in this call.
-export function runBot(state, candles, cfg) {
+// With a log array, every candle that ends without an order is noted too, so the live bot shows each decision it takes.
+export function runBot(state, candles, cfg, log = null) {
   const p = validateConfig(cfg), fee = cfg.fee / 100;
   const closes = candles.map(c => c.close);
   const rsi = cfg.strategy === 'rsi' ? rsiSeries(closes, p.period) : null;
@@ -98,17 +99,19 @@ export function runBot(state, candles, cfg) {
     const c = candles[i];
     if (c.closeTime <= state.lastTime) continue;
     state.lastTime = c.closeTime;
-    let t = null;
+    let t = null, note = '';
     if (cfg.strategy === 'rsi') {
       const r = rsi[i];
       if (r === null) continue;
       if (state.qty === 0 && r < p.buyBelow) t = buy(state, c, state.cash, fee, `RSI ${r.toFixed(1)} sous ${p.buyBelow} : achat`)?.trade;
       else if (state.qty > 0 && r > p.sellAbove) t = sell(state, c, state.qty, fee, `RSI ${r.toFixed(1)} au-dessus de ${p.sellAbove} : vente`);
+      note = state.qty > 0 ? `RSI ${r.toFixed(0)} : on garde, vente au-dessus de ${p.sellAbove}` : `RSI ${r.toFixed(0)} : pas d’achat, il faut passer sous ${p.buyBelow}`;
     } else if (cfg.strategy === 'ema') {
       if (fast[i - 1] === null || slow[i - 1] === null) continue;
       const up = fast[i - 1] <= slow[i - 1] && fast[i] > slow[i], down = fast[i - 1] >= slow[i - 1] && fast[i] < slow[i];
       if (up && state.qty === 0) t = buy(state, c, state.cash, fee, `EMA ${p.fast} passe au-dessus de l’EMA ${p.slow} : achat`)?.trade;
       else if (down && state.qty > 0) t = sell(state, c, state.qty, fee, `EMA ${p.fast} passe sous l’EMA ${p.slow} : vente`);
+      note = `EMA ${p.fast} ${fast[i] > slow[i] ? 'au-dessus de' : 'sous'} l’EMA ${p.slow}, pas de croisement : ${state.qty > 0 ? 'on garde' : 'pas d’achat'}`;
     } else if (cfg.strategy === 'dca') {
       const avg = state.qty > 0 ? state.cost / state.qty : 0;
       if (p.takeProfit > 0 && state.qty > 0 && c.close >= avg * (1 + p.takeProfit / 100)) {
@@ -117,6 +120,8 @@ export function runBot(state, candles, cfg) {
         t = buy(state, c, p.amount, fee, `Achat programmé de ${fmt(Math.min(p.amount, state.cash))} $`)?.trade;
       }
       state.ticks++;
+      const left = (p.every - state.ticks % p.every) % p.every;
+      note = state.cash <= 0.01 ? 'Capital entièrement investi' : `Prochain achat ${left ? `dans ${left} bougie${left > 1 ? 's' : ''}` : 'à la prochaine clôture'}`;
     } else if (cfg.strategy === 'grid') {
       const lot = cfg.capital / p.levels;
       const sellable = state.lots.filter(l => c.close >= l.price * (1 + p.step / 100));
@@ -128,8 +133,10 @@ export function runBot(state, candles, cfg) {
         const done = buy(state, c, lot, fee, state.ref === null ? 'Ouverture de la grille : premier palier' : `Baisse de −${p.step} % : achat d’un palier`);
         if (done) { state.lots.push({price: c.close, qty: done.qty}); t = done.trade; }
       }
+      note = `Prix ${fmt(c.close)} $ : aucun palier touché (${state.lots.length}/${p.levels} achetés)`;
     }
     if (t) made.push(t);
+    else if (log && note) log.push({t: c.closeTime, price: c.close, note});
   }
   return made;
 }
