@@ -1,0 +1,29 @@
+security:
+    password_hashers:
+        # Argon2id, as the first API: existing hashes stay valid.
+        App\Entity\User: 'sodium'
+
+    providers:
+        app_users:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt)/
+            security: false
+        api:
+            stateless: true
+            provider: app_users
+            custom_authenticators:
+                - App\Security\SessionTokenAuthenticator
+            entry_point: App\Security\ApiEntryPoint
+
+when@test:
+    security:
+        password_hashers:
+            App\Entity\User:
+                algorithm: sodium
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

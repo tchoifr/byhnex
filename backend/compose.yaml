@@ -1,0 +1,20 @@
+# Base MySQL 8.4 locale, identique à la production OVH : docker compose up -d
+services:
+  database:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: byhnex
+      MYSQL_USER: byhnex
+      MYSQL_PASSWORD: byhnex
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      retries: 20
+    volumes:
+      - database_data:/var/lib/mysql:rw
+
+volumes:
+  database_data:
