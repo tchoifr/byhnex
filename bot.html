@@ -106,6 +106,9 @@
   .side { font-size: 11px; font-weight: 800; letter-spacing: 1px; padding: 4px 8px; border-radius: 8px; }
   .side.buy { color: var(--up); background: rgba(44,245,163,.1); }
   .side.sell { color: var(--down); background: rgba(255,92,124,.1); }
+  .side.wait { color: var(--muted); background: rgba(150,160,255,.08); }
+  .entry.check { opacity: .82; }
+  .entry.check .amt { color: var(--dim); }
   .entry small { grid-column: 2 / -1; color: var(--muted); }
   .entry .amt { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; white-space: nowrap; }
   .empty { color: var(--muted); font-size: 13px; padding: 14px 2px; }
@@ -165,6 +168,7 @@
     .rail#assets { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; }
     .charts { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; gap: 10px; }
     .charts::-webkit-scrollbar { display: none; }
+    .charts { align-items: flex-start; }
     .charts > .card { flex: 0 0 90%; scroll-snap-align: center; }
     .swipe-hint { display: block; margin: -8px 0 0; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--dim); }
     .adv summary { min-height: 56px; }
@@ -254,7 +258,7 @@
 
 <script src="network.js?v=20261003-ovh"></script>
 <script type="module">
-import {STRATEGIES, simulateMany, runBot, newBot, equityOf, validateConfig, readNow, rsiSeries, emaSeries} from './bot-engine.js?v=20261004-multi';
+import {STRATEGIES, simulateMany, runBot, newBot, equityOf, validateConfig, readNow, rsiSeries, emaSeries} from './bot-engine.js?v=20261005-log';
 
 const ASSETS = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE', 'ADA', 'LINK'], MAX = 3;
 const HELP = {
@@ -390,12 +394,14 @@ async function startLive() {
   try {
     const assets = [...prefs.assets], sub = subCfg(cfg, assets.length);
     const got = await Promise.all(assets.map(a => fetchCandles(a, prefs.interval, 500, true)));
-    const next = {assets, interval: prefs.interval, cfg, states: {}, prices: {}, entry: {}, startedAt: Date.now(), checkedAt: Date.now(), history: []};
+    const next = {assets, interval: prefs.interval, cfg, states: {}, prices: {}, entry: {}, startedAt: Date.now(), checkedAt: Date.now(), history: [], checks: []};
     assets.forEach((a, i) => {
       const {candles, price} = got[i], state = newBot(sub.capital);
       // Decide right away on the candle that just closed, then on every new close.
       state.lastTime = candles.at(-2)?.closeTime ?? 0;
-      runBot(state, candles, sub);
+      const log = [];
+      runBot(state, candles, sub, log);
+      next.checks.push(...log.map(e => ({...e, asset: a})));
       next.states[a] = state; next.prices[a] = price; next.entry[a] = price;
       candlesBy[a] = candles;
     });
@@ -428,14 +434,18 @@ async function tickLive() {
   const sub = subCfg(live.cfg, live.assets.length);
   const got = await Promise.allSettled(live.assets.map(a => fetchCandles(a, live.interval, 500, true)));
   if (!live) return;
-  const failed = [];
+  const failed = [], fresh = !live.checks;
+  live.checks ||= [];
   live.assets.forEach((a, i) => {
     if (got[i].status !== 'fulfilled') { failed.push(a); return; }
     const {candles, price} = got[i].value;
-    if (!live.stopped) runBot(live.states[a], candles, sub);
+    if (!live.stopped) { const log = []; runBot(live.states[a], candles, sub, log); (live.checks ||= []).push(...log.map(e => ({...e, asset: a}))); }
     live.prices[a] = price; candlesBy[a] = candles;
+    // A bot started before the journal noted its checks: show at least what it reads now.
+    if (fresh && !live.checks.some(c => c.asset === a)) { const r = readNow(live.states[a], candles, sub); live.checks.push({t: candles.at(-1).closeTime, price: candles.at(-1).close, note: `${r.value} : ${r.wait}`, asset: a}); }
   });
   live.checkedAt = Date.now();
+  if (live.checks?.length > 150) live.checks = live.checks.sort((x, y) => x.t - y.t).slice(-150);
   live.error = failed.length ? `Cours ${failed.join(', ')} indisponibles, nouvel essai dans une minute.` : null;
   if (!live.stopped) record();
   write(LIVE_KEY, live);
@@ -495,7 +505,7 @@ function renderAll() {
 function renderLive() {
   const {bot, hold, sub} = liveTotals(), gain = (bot / live.cfg.capital - 1) * 100, holdGain = (hold / live.cfg.capital - 1) * 100;
   const open = live.assets.filter(a => live.states[a].qty > 0);
-  $('status-title').textContent = live.stopped ? 'Bot en pause' : open.length ? `Actif · en position sur ${open.join(', ')}` : `Actif · surveille ${live.assets.join(', ')}`;
+  $('status-title').textContent = live.stopped ? 'Bot en pause' : open.length ? `Actif · en position sur ${open.join(', ')}` : `Actif · attend le signal sur ${live.assets.join(', ')}`;
   $('status-text').textContent = live.error || (live.stopped ? 'Le portefeuille fictif est conservé. Efface le bot pour en lancer un autre.' :
     `${NAMES[live.cfg.strategy]} sur bougies ${live.interval}${live.assets.length > 1 ? `, ${usd(sub.capital)} par crypto` : ''}. Lancé le ${when(live.startedAt)}. Il décide à chaque clôture de bougie et suit les cours chaque minute.`);
   renderClock();
@@ -508,10 +518,18 @@ function renderLive() {
   }), 'En ce moment');
   const sells = trades.filter(t => t.side === 'sell');
   renderTiles({final: bot, pct: gain, holdPct: holdGain, trades: trades.length, winRate: sells.length ? sells.filter(t => t.pnl > 0).length / sells.length * 100 : null, fees: live.assets.reduce((s, a) => s + live.states[a].fees, 0), live: true});
-  renderJournal(trades, 'Journal du bot en direct', 'Aucune opération pour l’instant : les conditions ne sont pas réunies. Chaque carte crypto en haut montre ce que le bot attend.', live.assets.length > 1);
+  const feed = [...trades, ...(live.checks || [])].sort((x, y) => x.t - y.t);
+  renderJournal(feed, 'Journal du bot en direct', 'Le bot prend sa première décision dès que les cours sont chargés.', live.assets.length > 1);
+  $('journal-title').textContent = `Journal du bot en direct · ${trades.length} ordre${trades.length > 1 ? 's' : ''}`;
   if (candlesBy[focus]) renderPrice(candlesBy[focus], trades.filter(t => t.asset === focus), focus, 200);
   $('equity-title').textContent = 'Valeur du portefeuille depuis le lancement';
-  if ((live.history || []).length >= 2) renderEquity(live.history);
+  if ((live.history || []).length >= 2) {
+    // The curve is only sampled while the page is open: a long gap is drawn as a break, not as a straight line.
+    const eq = [], h = live.history;
+    h.forEach((e, i) => { if (i && e.t - h[i - 1].t > 180000) eq.push({t: (e.t + h[i - 1].t) / 2, bot: null, hold: null}); eq.push(e); });
+    renderEquity(eq);
+    if (eq.some(e => e.bot === null)) $('equity-plot').insertAdjacentHTML('beforeend', '<p class="hint">Ligne coupée : la page était fermée. Le bot a rattrapé les bougies manquées à la réouverture.</p>');
+  }
   else { $('equity-plot').innerHTML = '<p class="empty">La courbe se remplit à chaque vérification des cours (toutes les minutes) tant que la page est ouverte.</p>'; $('equity-table').innerHTML = ''; }
 }
 function renderCoins(rows, readLabel) {
@@ -543,11 +561,11 @@ function renderTiles(s) {
 }
 function renderJournal(trades, title, emptyText, tag = false) {
   $('journal-title').textContent = title + (trades.length ? ` · ${trades.length}` : '');
-  $('journal').innerHTML = trades.length ? [...trades].reverse().slice(0, 200).map(t => `<div class="entry"><span class="side ${t.side}">${t.side === 'buy' ? 'ACHAT' : 'VENTE'}</span><span>${tag ? `<span class="side-asset">${t.asset}</span>` : ''}${when(t.t)} · ${px(t.price)}</span><span class="amt ${t.side === 'sell' && t.pnl !== undefined ? cls(t.pnl) : ''}">${t.side === 'sell' ? (t.pnl >= 0 ? '+' : '') + usd(t.pnl) : usd(t.value)}</span><small>${t.reason}</small></div>`).join('') : `<p class="empty">${emptyText}</p>`;
+  $('journal').innerHTML = trades.length ? [...trades].reverse().slice(0, 200).map(t => !t.side ? `<div class="entry check"><span class="side wait">VÉRIF</span><span>${tag ? `<span class="side-asset">${t.asset}</span>` : ''}${when(t.t)} · ${px(t.price)}</span><span class="amt">—</span><small>${t.note}</small></div>` : `<div class="entry"><span class="side ${t.side}">${t.side === 'buy' ? 'ACHAT' : 'VENTE'}</span><span>${tag ? `<span class="side-asset">${t.asset}</span>` : ''}${when(t.t)} · ${px(t.price)}</span><span class="amt ${t.side === 'sell' && t.pnl !== undefined ? cls(t.pnl) : ''}">${t.side === 'sell' ? (t.pnl >= 0 ? '+' : '') + usd(t.pnl) : usd(t.value)}</span><small>${t.reason}</small></div>`).join('') : `<p class="empty">${emptyText}</p>`;
 }
 /* ---------- charts (SVG, one y-scale each, crosshair tooltip) ---------- */
 function chart(el, {series, markers = [], yFmt, height = 260, range, hlines = [], band, ticks: fixedTicks, xAxis = true, ends: showEnds = series.length > 1}) {
-  const W = Math.max(300, el.clientWidth || 600), H = height, L = 8, R = 64, T = 12, B = xAxis ? 24 : 8;
+  const W = Math.max(300, el.clientWidth || 600), H = height, L = 8, T = 12, B = xAxis ? 24 : 8;
   const xs = series[0].pts.map(p => p.t), t0 = xs[0], t1 = xs.at(-1);
   let lo = Infinity, hi = -Infinity;
   if (range) [lo, hi] = range;
@@ -556,8 +574,10 @@ function chart(el, {series, markers = [], yFmt, height = 260, range, hlines = []
     for (const h of hlines) { lo = Math.min(lo, h.v); hi = Math.max(hi, h.v); }
     const pad = (hi - lo) * 0.08 || hi * 0.05 || 1; lo -= pad; hi += pad;
   }
-  const X = t => L + (t - t0) / (t1 - t0 || 1) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
   const ticks = fixedTicks || niceTicks(lo, hi, 4);
+  // The right margin grows with the longest axis label so values such as « 100 200 $US » are never cut.
+  const R = Math.max(40, Math.ceil(Math.max(...ticks.map(v => String(yFmt(v)).length)) * 6.6) + 14);
+  const X = t => L + (t - t0) / (t1 - t0 || 1) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
   const grid = ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(150,160,255,.10)"/><text x="${W - R + 8}" y="${Y(v) + 4}" font-size="11" fill="#8f95bd">${yFmt(v)}</text>`).join('');
   const shade = band ? `<rect x="${L}" width="${W - L - R}" y="${Y(band[1])}" height="${Y(band[0]) - Y(band[1])}" fill="${band[2]}"/>` : '';
   const levels = hlines.map(h => `<line x1="${L}" x2="${W - R}" y1="${Y(h.v)}" y2="${Y(h.v)}" stroke="${h.color}" stroke-width="1.5" stroke-dasharray="5 4" opacity=".85"/>${h.label ? `<text x="${L + 4}" y="${Y(h.v) - 5}" font-size="10.5" font-weight="700" fill="${h.color}" stroke="#0d1024" stroke-width="3" paint-order="stroke">${h.label}</text>` : ''}`).join('');
@@ -565,7 +585,8 @@ function chart(el, {series, markers = [], yFmt, height = 260, range, hlines = []
   const xt = xAxis ? (W < 520 ? [0, .5, 1] : [0, .25, .5, .75, 1]).map(f => t0 + f * span).map((t, i) => `<text x="${X(t)}" y="${H - 6}" font-size="11" fill="#8f95bd" text-anchor="${i === 0 ? 'start' : t === t1 ? 'end' : 'middle'}">${fmtX ? new Date(t).toLocaleDateString('fr-FR', fmtX) : hhmm(t)}</text>`).join('') : '';
   // Indicators start after their warm-up, so a line breaks wherever a value is missing.
   const path = pts => { let d = '', pen = false; for (const p of pts) { if (p.v === null) { pen = false; continue; } d += (pen ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p.v).toFixed(1); pen = true; } return d; };
-  const lines = series.map(s => `<path fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" d="${path(s.pts)}"/>`).join('');
+  const lone = pts => pts.filter((p, i) => p.v !== null && (pts[i - 1]?.v ?? null) === null && (pts[i + 1]?.v ?? null) === null);
+  const lines = series.map(s => `<path fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" d="${path(s.pts)}"/>` + lone(s.pts).map(p => `<circle cx="${X(p.t)}" cy="${Y(p.v)}" r="2.5" fill="${s.color}"/>`).join('')).join('');
   const ends = showEnds ? series.map(s => { const p = s.pts.at(-1); return p.v === null ? '' : `<circle cx="${X(p.t)}" cy="${Y(p.v)}" r="4" fill="${s.color}" stroke="#0d1024" stroke-width="2"/>`; }).join('') : '';
   const marks = markers.filter(m => m.t >= t0 && m.t <= t1).map(m => {
     const x = X(m.t), y = Y(m.v);
@@ -642,7 +663,7 @@ function renderEquity(eq) {
     {name: 'HOLD', color: '#9473f0', pts: eq.map(e => ({t: e.t, v: e.hold}))},
   ], yFmt: v => usd(v)});
   const step = Math.max(1, Math.floor(eq.length / 12));
-  const rows = eq.filter((_, i) => i % step === 0 || i === eq.length - 1);
+  const rows = eq.filter((e, i) => e.bot !== null && (i % step === 0 || i === eq.length - 1));
   $('equity-table').innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr><th style="text-align:left;padding:6px;color:#8f95bd">Date</th><th style="text-align:right;padding:6px;color:#8f95bd">Bot</th><th style="text-align:right;padding:6px;color:#8f95bd">HOLD</th></tr></thead><tbody>${rows.map(r => `<tr><td style="padding:6px">${when(r.t)}</td><td style="text-align:right;padding:6px">${usd(r.bot)}</td><td style="text-align:right;padding:6px">${usd(r.hold)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 

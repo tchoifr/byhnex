@@ -89,3 +89,12 @@ test('the current reading explains what the bot waits for', async () => {
   s.ticks = 1;
   assert.match(readNow(s, data, dca).value, /3 bougies/);
 });
+
+test('the live bot notes every candle it checks without trading', () => {
+  const state = newBot(1000), log = [];
+  state.lastTime = 30000;
+  runBot(state, candles(Array.from({length: 40}, (_, i) => 100 + i)), {strategy: 'rsi', params: {}, capital: 1000, fee: 0.1}, log);
+  assert.equal(state.trades.length, 0);
+  assert.equal(log.length, 10);
+  assert.match(log[0].note, /pas d’achat, il faut passer sous 30/);
+});
