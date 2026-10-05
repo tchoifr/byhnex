@@ -1,6 +1,6 @@
 name: Production byhnex.com
 
-# Each push to main is tested, built and deployed to the OVH hosting (www/), then checked online.
+# main is production: each merge into main runs the full CI, then deploys to the OVH hosting.
 on:
   push:
     branches: [main]
@@ -14,52 +14,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: byhnex_test
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=5s --health-timeout=5s --health-retries=30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: pdo_mysql, sodium, mbstring
-          tools: none
-          coverage: none
-      - name: Tests du site
-        run: npm test
-      - name: Tests de la synchronisation
-        run: node --test prod/sync-core.test.mjs
-      - name: Syntaxe PHP
-        run: find api prod -name '*.php' -print0 | xargs -0 -n1 php -l
-      - name: Tests de l'API (MySQL 8.4)
-        env:
-          BYHNEX_CONFIG: ${{ github.workspace }}/prod/ci-config.php
-        run: |
-          php api/bin/migrate.php
-          php api/bin/migrate.php | grep -q "aucune migration"
-          php -S 127.0.0.1:8080 prod/ci-router.php > php-server.log 2>&1 &
-          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8080/api/health > /dev/null && break; sleep 0.5; done
-          API_URL=http://127.0.0.1:8080/api node --test prod/api.test.mjs || { cat php-server.log; exit 1; }
-      - name: Build de production
-        run: node prod/build-prod.mjs
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   deploy:
     name: Déploiement
-    needs: test
-    if: github.ref == 'refs/heads/main'
+    needs: ci
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -68,13 +28,28 @@ jobs:
       SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
       SSH_USER: ${{ secrets.PROD_SSH_USER }}
       WEB_DIR: ${{ secrets.PROD_WEB_DIR }}
+      API_DIR: byhnex-api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Build de production
-        run: node prod/build-prod.mjs
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, sodium, intl, mbstring
+          tools: composer:v2
+          coverage: none
+      - name: Build du site
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend run build
+          node deploy/build.mjs
+      - name: Dépendances de l'API (production, sans outils de développement)
+        working-directory: backend
+        run: composer install --no-dev --no-interaction --no-progress --optimize-autoloader --classmap-authoritative
       - name: Connexion SSH
         env:
           SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
@@ -83,7 +58,7 @@ jobs:
           test -n "$SSH_HOST" && test -n "$SSH_USER" && test -n "$WEB_DIR" || { echo "::error::Secrets PROD_SSH_HOST, PROD_SSH_USER et PROD_WEB_DIR requis."; exit 1; }
           case "$WEB_DIR" in /*|*..*|"") echo "::error::PROD_WEB_DIR doit être un chemin relatif au dossier personnel, par exemple www."; exit 1;; esac
           install -m 700 -d ~/.ssh
-          cp prod/known_hosts ~/.ssh/known_hosts
+          cp deploy/known_hosts ~/.ssh/known_hosts
           if [ -n "$SSH_KEY" ]; then
             printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
             echo "SSH_CMD=ssh -i $HOME/.ssh/deploy_key -o BatchMode=yes" >> "$GITHUB_ENV"
@@ -94,15 +69,25 @@ jobs:
           else
             echo "::error::Ajoutez le secret PROD_SSH_KEY (recommandé) ou PROD_SSH_PASSWORD."; exit 1
           fi
+      - name: Configuration privée de l'API (créée au premier déploiement, sur le serveur)
+        run: $SSH_CMD "$SSH_USER@$SSH_HOST" "php" < deploy/bootstrap-env.php
       - name: Copie de secours de la version en ligne
-        run: $SSH_CMD "$SSH_USER@$SSH_HOST" "rm -rf ~/deploy-previous && cp -a ~/$WEB_DIR ~/deploy-previous"
-      - name: Envoi des fichiers
+        run: $SSH_CMD "$SSH_USER@$SSH_HOST" "rm -rf ~/deploy-previous && mkdir ~/deploy-previous && cp -a ~/$WEB_DIR ~/deploy-previous/www && cp -a ~/$API_DIR ~/deploy-previous/api"
+      - name: Envoi de l'API (hors du dossier web)
+        run: |
+          rsync -rlz --delete --chmod=D755,F644 \
+            --filter='P .env.local' --filter='P var/' \
+            --exclude='/tests/' --exclude='/var/' --exclude='/.env.local' --exclude='/.env.test' \
+            --exclude='/phpunit.dist.xml' --exclude='/phpstan.dist.neon' --exclude='/.php-cs-fixer*' \
+            --exclude='/compose*.yaml' --exclude='/.editorconfig' --exclude='/.gitignore' \
+            -e "$SSH_CMD" backend/ "$SSH_USER@$SSH_HOST:$API_DIR/"
+      - name: Cache et migrations de la base
+        run: $SSH_CMD "$SSH_USER@$SSH_HOST" "cd ~/$API_DIR && php bin/console cache:clear --env=prod && php bin/console doctrine:migrations:migrate --env=prod --no-interaction --allow-no-migration"
+      - name: Envoi du site
         run: |
           rsync -rlz --delete --chmod=D755,F644 \
             --filter='P googleb4faf05172e6f27a.html' \
             -e "$SSH_CMD" dist/ "$SSH_USER@$SSH_HOST:$WEB_DIR/"
-      - name: Migrations de la base
-        run: $SSH_CMD "$SSH_USER@$SSH_HOST" "php ~/$WEB_DIR/api/bin/migrate.php"
       - name: Vérification en ligne
         run: |
           expected=$(cat dist/version.txt)
@@ -112,6 +97,6 @@ jobs:
             sleep 3
           done
           [ "$online" = "$expected" ] || { echo "::error::byhnex.com sert la version '$online' au lieu de '$expected'."; exit 1; }
-          curl -fsS https://byhnex.com/ | grep -q "account.js?v=$expected"
+          curl -fsS https://byhnex.com/ | grep -q 'assets/account-'
           curl -fsS https://byhnex.com/api/health | grep -q '"ok":true'
           echo "byhnex.com est en ligne avec la version $expected."

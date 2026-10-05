@@ -1,0 +1,151 @@
+name: CI
+
+# Required checks for every Pull Request to main, and reused before each production deployment.
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  frontend:
+    name: Frontend (lint, types, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  backend:
+    name: Backend (style, analyse, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, pdo_sqlite, sodium, intl, mbstring
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - name: Style Symfony (PHP-CS-Fixer)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Analyse statique (PHPStan niveau 8)
+        run: php bin/console cache:warmup --env=dev && vendor/bin/phpstan analyse --no-progress
+      - name: Tests PHPUnit
+        run: php bin/phpunit
+      - name: Configuration Symfony
+        run: php bin/console lint:container && php bin/console lint:yaml config --parse-tags
+
+  api-contract:
+    name: API sur MySQL 8.4 (migrations et contrat)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      APP_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, pdo_sqlite, sodium, intl, mbstring
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - name: Base neuve — migrations puis schéma conforme au code
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/byhnex_new?serverVersion=8.4.0&charset=utf8mb4
+        run: |
+          php bin/console doctrine:database:create --if-not-exists
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:schema:validate
+      - name: Base de production — schéma de la première API, puis migrations
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/byhnex_legacy?serverVersion=8.4.0&charset=utf8mb4
+        run: |
+          php bin/console doctrine:database:create --if-not-exists
+          mysql -h 127.0.0.1 -uroot -proot byhnex_legacy_test < tests/Fixtures/legacy-schema.sql
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:schema:validate
+      - name: Contrat de l'API (mêmes réponses que la version en production)
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/byhnex_new?serverVersion=8.4.0&charset=utf8mb4
+        run: |
+          php -S 127.0.0.1:8080 bin/dev-router.php > var/php-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/api/health > /dev/null && break; sleep 0.5; done
+          API_URL=http://127.0.0.1:8080/api node --test tests/Contract/api.test.mjs || { cat var/php-server.log var/log/test.log 2>/dev/null | tail -50; exit 1; }
+
+  legacy:
+    name: Pages d'origine (tests existants)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+
+  visual:
+    name: Parité visuelle (Vue = version d'origine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Builds de production et de référence
+        run: |
+          npm --prefix frontend run build
+          node deploy/build.mjs
+          node deploy/build.mjs --legacy
+      - run: npx playwright test --project=parity
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: parite-visuelle
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 14

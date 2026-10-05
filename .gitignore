@@ -28,3 +28,10 @@ byhnex-ovh-api.zip
 strategy-fullscreen.png
 navigation-graph.png
 graph-coherence.png
+
+# Builds and test outputs
+dist-legacy/
+.dist-aside/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
