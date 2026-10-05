@@ -23,7 +23,7 @@ jobs:
         id: check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '77d62e954dc140ea754a53a83cb23564' }}
         run: |
           # Only the token is required. A pasted token often carries spaces, a newline, "Bearer " or even the
           # whole curl example: keep only the token itself (never printed).

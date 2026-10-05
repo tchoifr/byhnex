@@ -4,6 +4,7 @@ name = "byhnex-bot"
 main = "byhnex-bot.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
+account_id = "77d62e954dc140ea754a53a83cb23564"
 
 [vars]
 USERS = '{"moi":{"name":"Moi","hash":"c09b2743780808a1df233c8d9462a16361160f4bcdf82a4d2ce1e49baea9f8d6"},"collegue":{"name":"Collègue","hash":"85343fbf6277454f415b42ee29f1b2f968e512a2a2aa9582ea66148311328385"}}'
