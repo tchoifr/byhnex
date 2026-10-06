@@ -24,7 +24,7 @@ Tout push sur `main` (direct ou par fusion de PR) est testé puis déployé auto
 | `UPSTREAM_TOKEN` | nécessaire depuis que `osvalt16/byhnex` est privé : jeton en **lecture seule** sur ce dépôt. Le plus restreint : jeton fin créé par osvalt16, limité à `osvalt16/byhnex`, permission Contents en lecture. Sinon : jeton classique de tchoifr avec la portée `repo` |
 | `PLATFORM_SOLANA_WALLET` | adresse **publique** du wallet Solana qui reçoit les abonnements en USDC ([docs/paiement.md](../docs/paiement.md)) |
 | `SOLANA_RPC_URL` | URL du RPC Solana mainnet avec sa clé (Helius) |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | compte Cloudflare de Byhnex, pour le serveur du bot des abonnés (`bot-server/`) |
+| `CLOUDFLARE_API_TOKEN` (et `CLOUDFLARE_ACCOUNT_ID`, facultatif : 32 caractères) | compte Cloudflare de Byhnex, pour le serveur du bot des abonnés (`bot-server/`) ; jeton créé avec le modèle « Edit Cloudflare Workers » |
 
 L'empreinte du serveur est fixée dans `deploy/known_hosts` : la CI refuse tout autre serveur.
 

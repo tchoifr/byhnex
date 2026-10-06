@@ -89,13 +89,14 @@ jobs:
           BOT_SERVER_URL: ${{ vars.BOT_SERVER_URL }}
         run: |
           # Pasted secrets often carry spaces, a newline, "Bearer " or a whole dashboard URL: keep only the useful part.
+          # The token is the longest run of token characters (a pasted "curl … Bearer <token>" works too).
+          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '[A-Za-z0-9_-]{30,}' | awk '{ print length, $0 }' | sort -n | tail -n1 | cut -d' ' -f2 || true)
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "::add-mask::$CLOUDFLARE_API_TOKEN"; fi
           CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -oiE '[a-f0-9]{32}' | head -n1 | tr 'A-F' 'a-f' || true)
-          CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sed -E 's/^[[:space:]]*(Bearer[[:space:]]+)?//I' | tr -d '[:space:]')
-          export CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
-          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::warning title=Serveur du bot non déployé::Le secret CLOUDFLARE_ACCOUNT_ID ne contient pas d'identifiant de compte (32 caractères 0-9 a-f, visible dans le tableau de bord Cloudflare, colonne de droite « Account ID »)."
-          fi
-          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+          export CLOUDFLARE_API_TOKEN
+          # Optional: without a valid account id, wrangler uses the only account the token can reach.
+          if [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then export CLOUDFLARE_ACCOUNT_ID; else unset CLOUDFLARE_ACCOUNT_ID; fi
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
             if out=$(npx --yes wrangler@4.146.0 deploy --config bot-server/wrangler.toml --var "BOT_PUBLIC_KEY:$BOT_PUBLIC_KEY" 2>&1); then
               echo "$out"
               url=$(printf '%s\n' "$out" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -n1)
@@ -107,7 +108,7 @@ jobs:
               echo "::warning title=Serveur du bot non déployé::$msg"
             fi
           else
-            echo "::warning::Secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID absents : serveur du bot des abonnés non déployé (voir deploy/README.md)."
+            echo "::warning::Secret CLOUDFLARE_API_TOKEN absent : serveur du bot des abonnés non déployé (voir deploy/README.md)."
           fi
           printf 'BOT_SERVER_URL=%s\n' "$BOT_SERVER_URL" | $SSH_CMD "$SSH_USER@$SSH_HOST" "umask 077 && cat > ~/$API_DIR/.env.deploy.tmp"
           $SSH_CMD "$SSH_USER@$SSH_HOST" "php" < deploy/server-env.php > /dev/null
