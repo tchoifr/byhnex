@@ -31,11 +31,26 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.SYNC_TOKEN }}
       - name: Fusion de osvalt16/byhnex
+        env:
+          # Needed since osvalt16/byhnex is private: a token that can read it (Contents: read), see deploy/README.md.
+          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
         run: |
           git config user.name "byhnex-sync"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/osvalt16/byhnex.git
-          git fetch --quiet upstream main
+          # The checkout's credentials (SYNC_TOKEN, this repository only) must not be sent to osvalt16's repository.
+          auth=()
+          if [ -n "$UPSTREAM_TOKEN" ]; then
+            basic=$(printf 'x-access-token:%s' "$(printf '%s' "$UPSTREAM_TOKEN" | tr -d '[:space:]')" | base64 -w0)
+            echo "::add-mask::$basic"
+            auth=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic $basic")
+          else
+            auth=(-c "http.https://github.com/.extraheader=")
+          fi
+          if ! git "${auth[@]}" fetch --quiet upstream main; then
+            echo "::error title=Synchro osvalt16 impossible::Le dépôt osvalt16/byhnex n'est pas lisible (privé ?). Ajoutez le secret UPSTREAM_TOKEN : jeton qui peut lire ce dépôt (voir deploy/README.md)."
+            exit 1
+          fi
           count=$(git rev-list --count HEAD..upstream/main)
           if [ "$count" = "0" ]; then echo "Rien de nouveau chez osvalt16."; exit 0; fi
           echo "$count nouveau(x) commit(s) d'osvalt16 :"
