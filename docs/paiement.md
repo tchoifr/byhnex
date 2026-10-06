@@ -70,8 +70,7 @@ La clé privée Ed25519 est créée sur le serveur OVH (`.env.local`, par `deplo
 |---|---|
 | `PLATFORM_SOLANA_WALLET` | **adresse publique** du wallet Solana qui reçoit les USDC (jamais sa clé privée ni sa phrase de récupération) |
 | `SOLANA_RPC_URL` | URL RPC mainnet avec clé, par exemple Helius : `https://mainnet.helius-rpc.com/?api-key=…` |
-| `CLOUDFLARE_API_TOKEN` | jeton Cloudflare, modèle « Edit Cloudflare Workers » |
-| `CLOUDFLARE_ACCOUNT_ID` | identifiant du compte Cloudflare (32 caractères hexadécimaux) |
+| `CLOUDFLARE_API_TOKEN` | jeton Cloudflare, modèle « Edit Cloudflare Workers » (le compte est fixé dans `bot-server/wrangler.toml`) |
 
 Le déploiement écrit `~/byhnex-api/.env.prod.local` sur le serveur (jamais dans Git), déploie le Worker et publie son adresse dans `bot-config.json`. Tant qu'un réglage manque, la page affiche « Paiements bientôt ouverts » ou « Serveur du bot en cours d'installation », et rien n'est simulé.
 

@@ -85,18 +85,23 @@ jobs:
       - name: Serveur du bot des abonnés (Cloudflare)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BOT_SERVER_URL: ${{ vars.BOT_SERVER_URL }}
         run: |
-          # Pasted secrets often carry spaces, a newline, "Bearer " or a whole dashboard URL: keep only the useful part.
-          # The token is the longest run of token characters (a pasted "curl … Bearer <token>" works too).
+          # The Cloudflare account is set in bot-server/wrangler.toml (account_id), not taken from a secret.
+          # The token is the longest run of token characters: spaces, "Bearer " or a whole pasted curl command are ignored.
           CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '[A-Za-z0-9_-]{30,}' | awk '{ print length, $0 }' | sort -n | tail -n1 | cut -d' ' -f2 || true)
           if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "::add-mask::$CLOUDFLARE_API_TOKEN"; fi
-          CLOUDFLARE_ACCOUNT_ID=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | grep -oiE '[a-f0-9]{32}' | head -n1 | tr 'A-F' 'a-f' || true)
           export CLOUDFLARE_API_TOKEN
-          # Optional: without a valid account id, wrangler uses the only account the token can reach.
-          if [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then export CLOUDFLARE_ACCOUNT_ID; else unset CLOUDFLARE_ACCOUNT_ID; fi
+          unset CLOUDFLARE_ACCOUNT_ID
           if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            # A new account has no workers.dev subdomain yet: register one, or the deploy has no public address.
+            ACCOUNT=$(grep -oE '^account_id = "[a-f0-9]{32}"' bot-server/wrangler.toml | grep -oE '[a-f0-9]{32}')
+            API="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/workers/subdomain"
+            SUB=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API" | jq -r '.result.subdomain // empty' || true)
+            if [ -z "$SUB" ]; then
+              curl -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+                -d "{\"subdomain\":\"byhnex-${ACCOUNT:0:6}\"}" "$API" | jq -c '{subdomain: .result.subdomain, errors: [.errors[]?.message]}' || true
+            fi
             if out=$(npx --yes wrangler@4.146.0 deploy --config bot-server/wrangler.toml --var "BOT_PUBLIC_KEY:$BOT_PUBLIC_KEY" 2>&1); then
               echo "$out"
               url=$(printf '%s\n' "$out" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -n1)

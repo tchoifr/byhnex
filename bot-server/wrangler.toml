@@ -1,10 +1,12 @@
 # Subscribers' bot server for byhnex.com, on Byhnex's own Cloudflare account (osvalt16's bot-worker/ is untouched).
-# Deployed by .github/workflows/deploy-prod.yml when CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are set;
+# Deployed by .github/workflows/deploy-prod.yml when the CLOUDFLARE_API_TOKEN secret is set;
 # BOT_PUBLIC_KEY is passed at deploy time from the API server (the private key never leaves it).
 name = "byhnex-bot-pro"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
+# Compte Cloudflare de Byhnex (propriétaire), distinct de celui d'osvalt16 : identifiant public, pas un secret.
+account_id = "52435c046d6190dfac8722c7458b4aeb"
 
 [vars]
 ALLOWED_ORIGINS = "https://byhnex.com"
