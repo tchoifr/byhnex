@@ -6,7 +6,7 @@ main = "worker.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
 # Compte Cloudflare de Byhnex (propriétaire), distinct de celui d'osvalt16 : identifiant public, pas un secret.
-account_id = "52435c046d6190dfac8722c7458b4aeb"
+account_id = "db69cdbe1f2b5a64b9ffa1ad4465f445"
 
 [vars]
 ALLOWED_ORIGINS = "https://byhnex.com"
